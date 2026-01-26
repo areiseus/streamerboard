@@ -68,6 +68,7 @@ export default async function handler(req, res) {
                              */
                             dbData.nickname = json.station.user_nick || dbData.nickname;
                             dbData.total_broadcast_time = json.station.total_broad_time || dbData.total_broadcast_time;
+                            dbData.profile_img = `https://stimg.sooplive.co.kr/LOGO/${firstTwo}/${item.id}/m/${item.id}.webp`;
                         }
                     }
                 } catch (e) { 
