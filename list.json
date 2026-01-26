@@ -3,13 +3,29 @@
     {
       "id": "g_main",
       "name": "👑 유앤아이",
-      "members": ["woowakgood", "inehine"]
+      "members": [
+        {
+          "id": "moon26",
+          "platform": "soop"
+        },
+        {
+          "id": "bttolang",
+          "platform": "soop"
+        }
+      ]
     },
     {
       "id": "g_game",
       "name": "🎮 이매방랑",
-      "members": ["lilpa", "cotton1217"]
+      "members": [
+        {
+          "id": "bttolang",
+          "platform": "soop"
+        }
+      ]
     }
   ],
-  "ungrouped": ["gosegu2"]
+  "ungrouped": [
+    "gosegu2"
+  ]
 }
