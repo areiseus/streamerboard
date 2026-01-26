@@ -85,7 +85,7 @@
         <div class="panel">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h3>📋 DB 등록 현황 (<span id="totalCnt">0</span>명)</h3>
-                <button onclick="updateFull()" style="background:#e74c3c;">🔄 [모두 갱신]</button>
+                <button onclick="updateFull()" style="background:#e74c3c;">🔄 [모두 갱신]
 
                 <div id="debug-console" style="
     position: fixed; 
@@ -140,11 +140,12 @@
             logContent.innerHTML += `<br>❌ 통신 에러 발생: ${error.message}`;
         }
     }
+
     
     // 형님의 [모두 갱신] 버튼에 이 함수를 연결하세요.
     // 예: <button onclick="updateAllStreamers()">모두 갱신</button>
 </script>
-
+</button>
                 
             </div>
             <table>
