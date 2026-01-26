@@ -13,7 +13,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: '저장할 데이터가 없습니다.' });
     }
 
-    // 봇 차단 방지용 헤더 (사람인 척하기)
+    // 봇 차단 방지용 헤더 (형님이 쓰시던 것 그대로)
     const headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
@@ -28,11 +28,11 @@ export default async function handler(req, res) {
                 id: item.id,
                 platform: item.platform,
                 group_name: item.group_name, 
-                nickname: item.nickname,     // 일단 lookup에서 찾은 거 넣기
+                nickname: item.nickname,     
                 is_active: true,
                 last_updated_at: new Date(),
-                profile_img: null,           // 초기화
-                station_open_date: null      // 초기화
+                profile_img: null,
+                total_broadcast_time: null // [변경] 개설일 대신 이거 넣음
             };
 
             try {
@@ -45,13 +45,14 @@ export default async function handler(req, res) {
                     if (resp.ok) {
                         const json = await resp.json();
                         if (json && json.station) {
-                            // 닉네임 덮어쓰기
                             dbData.nickname = json.station.user_nick;
                             
-                            // 방송국 개설일
-                            dbData.station_open_date = json.station.station_open_date || null;
+                            // [수정됨] 총 방송 시간 수집 (단순 대입이라 코드가 짧음)
+                            if (json.station.total_broad_time) {
+                                dbData.total_broadcast_time = json.station.total_broad_time;
+                            }
                             
-                            // 프로필 이미지 (//로 시작하면 https 붙여주기)
+                            // 프로필 이미지 (형님 로직 유지)
                             let img = json.station.image_profile;
                             if (img) {
                                 if (img.startsWith('//')) dbData.profile_img = 'https:' + img;
@@ -70,22 +71,16 @@ export default async function handler(req, res) {
                     if (resp.ok) {
                         const json = await resp.json();
                         if (json && json.content) {
-                            // 닉네임 덮어쓰기
                             dbData.nickname = json.content.channelName;
-                            
-                            // 프로필 이미지
                             dbData.profile_img = json.content.channelImageUrl || null;
                             
-                            // 개설일 (YYYY-MM-DD 포맷 맞추기)
-                            if (json.content.openDate) {
-                                dbData.station_open_date = json.content.openDate.split(' ')[0];
-                            }
+                            // 치지직은 '총 방송 시간'을 주지 않으므로 null 유지
+                            // (날짜 계산하던 긴 코드가 빠져서 전체 길이가 줄어듦)
                         }
                     }
                 }
             } catch (crawlErr) {
                 console.error(`[수집 실패] ${item.id}:`, crawlErr);
-                // 실패해도 에러 내지 말고 기본 정보만이라도 저장하게 둠
             }
 
             return dbData;
