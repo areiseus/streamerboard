@@ -96,51 +96,43 @@
         </div>
     </div>
 
-
-    <div style="width: 100%; padding: 20px; border: 1px solid #ddd; background: #fff;">
-
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-        <h2 style="margin: 0;">📊 DB 등록 현황</h2>
-        <button onclick="updateFull()" style="padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; border-radius: 4px;">
+    
+    <div style="background: #2b2b2b; border: 1px solid #444; border-radius: 8px; padding: 20px; margin-top: 20px; color: #fff;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">
+        <h3 style="margin: 0; font-size: 18px; color: #eee;">📊 DB 등록 현황</h3>
+        <button onclick="updateFull()" style="background-color: #d9534f; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">
             🔄 [모두 갱신]
         </button>
-    </div>
-
-    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;">
-        <thead>
-            <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
-                <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">ID</th>
-                <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">플랫폼</th>
-                <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">닉네임</th>
-                <th style="padding: 12px; text-align: center; border: 1px solid #dee2e6;">이미지 상태</th>
-                <th style="padding: 12px; text-align: center; border: 1px solid #dee2e6;">상태</th>
-            </tr>
-        </thead>
-        <tbody id="streamer-list-body">
-            <tr>
-                <td colspan="5" style="padding: 20px; text-align: center; color: #999;">
-                    데이터를 불러오는 중입니다...
-                </td>
-            </tr>
-        </tbody>
-    </table>
-
-    <div style="border: 1px solid #333; background: #111; color: #fff; border-radius: 5px; overflow: hidden;">
-        <div style="background: #333; padding: 5px 10px; font-weight: bold; font-size: 13px; border-bottom: 1px solid #555;">
-            🖥️ 실시간 갱신 로그 (Update Log)
         </div>
-        
-        <div id="static-log-window" style="
-            height: 250px; 
-            padding: 10px; 
-            overflow-y: auto; 
-            font-family: 'Consolas', monospace; 
-            font-size: 12px; 
-            line-height: 1.6;">
-            <span style="color: #888;">👉 [모두 갱신] 버튼을 누르면 여기에 진행 상황이 표시됩니다.</span>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px; text-align: center;">
+                    <thead>
+                    <tr style="background-color: #333; color: #ccc;">
+                        <th style="padding: 10px; border-bottom: 2px solid #555;">그룹명</th>
+                        <th style="padding: 10px; border-bottom: 2px solid #555;">플랫폼</th>
+                        <th style="padding: 10px; border-bottom: 2px solid #555;">ID</th>
+                        <th style="padding: 10px; border-bottom: 2px solid #555;">닉네임</th>
+                        <th style="padding: 10px; border-bottom: 2px solid #555;">총 방송 시간</th>
+                        <th style="padding: 10px; border-bottom: 2px solid #555;">상태 / 관리</th>
+                    </tr>
+                </thead>
+                <tbody id="streamer-list-body">
+                    <tr>
+                        <td colspan="6" style="padding: 20px; color: #999;">데이터 로딩 중...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div style="margin-top: 20px; background-color: #000; border: 1px solid #00ff00; border-radius: 4px; padding: 10px;">
+            <div style="color: #00ff00; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 5px; font-size: 13px;">
+                🖥️ 실시간 갱신 로그 (Processing Log)
+            </div>
+            <div id="static-log-window" style="height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; color: #ddd; line-height: 1.6;">
+                대기 중... [모두 갱신] 버튼을 누르면 로그가 출력됩니다.
+            </div>
         </div>
     </div>
-
 </div>
     
     
