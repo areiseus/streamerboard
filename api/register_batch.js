@@ -68,15 +68,14 @@ export default async function handler(req, res) {
 
                     if (resp.ok) {
                         json = await resp.json();
-                        // 이미지가 제대로 있는지 확인
-                        if (json?.station?.image_profile) success = true;
+                        // [수정] image_profile 뿐만 아니라 profile_image도 같이 체크
+                        if (json?.station?.profile_image || json?.station?.image_profile) success = true;
                     }
 
                     // --- [시도 2] 실패 시, 쿠키 빼고 '순수 시청자 모드'로 재요청 ---
                     if (!success) {
                         console.log(`[SOOP 재시도] ${item.id} - 쿠키 빼고 재요청`);
                         let headers2 = { ...commonHeaders, 'Referer': referer };
-                        // 쿠키 절대 넣지 않음
                         resp = await fetch(apiUrl, { headers: headers2 });
                         if (resp.ok) json = await resp.json();
                     }
@@ -89,7 +88,8 @@ export default async function handler(req, res) {
                             dbData.total_broadcast_time = json.station.total_broad_time;
                         }
 
-                        let img = json.station.image_profile;
+                        // [핵심 수정] 숲 API의 바뀐 필드명(profile_image)을 우선적으로 긁어옴
+                        let img = json.station.profile_image || json.station.image_profile || json.station.user_image;
                         if (img) {
                             if (img.startsWith('//')) dbData.profile_img = 'https:' + img;
                             else if (!img.startsWith('http')) dbData.profile_img = 'https://' + img;
