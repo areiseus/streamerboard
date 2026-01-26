@@ -2,88 +2,71 @@ import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 
-// 🔥 선생님이 설정한 변수명 그대로 사용
 const supabase = createClient(
     process.env.streamer_db_URL,
     process.env.streamer_db_KEY
 );
 
 export default async function handler(req, res) {
-    // 이제 단순 ID가 아니라, 플랫폼 정보가 담긴 'items'를 받습니다.
-    const { items } = req.body; 
+    if (req.method !== 'POST') return res.status(405).end();
 
-    if (!items || !Array.isArray(items)) {
-        return res.status(400).json({ error: '목록이 올바르지 않습니다.' });
-    }
+    // items: [{ id, platform, group_name(선택) }]
+    const { items } = req.body;
+    if (!items || items.length === 0) return res.status(200).json({ message: 'No items' });
 
     const results = [];
 
-    try {
-        for (const item of items) {
-            // 옛날 데이터(문자열)면 'soop'으로 처리, 아니면 플랫폼 확인
-            const id = typeof item === 'string' ? item : item.id;
-            const platform = typeof item === 'string' ? 'soop' : (item.platform || 'soop');
+    for (const item of items) {
+        try {
+            // 1. 저장할 데이터 뼈대 (ID, 플랫폼)
+            let data = {
+                id: item.id,
+                platform: item.platform,
+                last_updated: new Date().toISOString()
+            };
 
-            let nickname = '';
-            let profileImg = '';
-
-            try {
-                // 🔀 갈림길: 플랫폼에 따라 다르게 행동
-                if (platform === 'chzzk') {
-                    // ⚡ 치지직 (네이버 API 사용)
-                    const url = `https://api.chzzk.naver.com/service/v1/channels/${id}`;
-                    const { data: json } = await axios.get(url);
-                    
-                    if (json.code !== 200) throw new Error('Chzzk API Error');
-                    
-                    nickname = json.content.channelName;
-                    profileImg = json.content.channelImageUrl;
-
-                } else {
-                    // 🌲 숲 (크롤링 사용)
-                    const url = `https://bj.afreecatv.com/${id}`;
-                    const { data: html } = await axios.get(url, {
-                        headers: { 'User-Agent': 'Mozilla/5.0' }
-                    });
-                    const $ = cheerio.load(html);
-
-                    nickname = $('meta[property="og:title"]').attr('content') || id;
-                    nickname = nickname.replace(' | 아프리카TV', '').trim();
-                    profileImg = $('meta[property="og:image"]').attr('content');
-                }
-
-                // 💾 DB에 저장 (platform 정보 포함!)
-                const { error: streamerError } = await supabase
-                    .from('streamers')
-                    .upsert({ 
-                        id: id, 
-                        nickname: nickname, 
-                        profile_img: profileImg,
-                        platform: platform, 
-                        last_updated_at: new Date()
-                    }, { onConflict: 'id' });
-
-                if (streamerError) throw streamerError;
-
-                // 통계 테이블 초기화 (오늘 날짜 칸 만들기)
-                const today = new Date().toISOString().split('T')[0];
-                await supabase.from('daily_stats').upsert({
-                    streamer_id: id,
-                    date: today
-                }, { onConflict: 'streamer_id, date' });
-
-                results.push({ id, status: 'success', name: nickname, platform });
-
-            } catch (innerErr) {
-                console.error(`Error processing ${id} (${platform}):`, innerErr);
-                results.push({ id, status: 'failed', platform, error: innerErr.message });
+            // 2. 그룹명이 같이 들어왔다면(관리자에서 등록/수정 시) DB에도 넣음
+            if (item.group_name) {
+                data.group_name = item.group_name;
             }
+
+            // 3. SOOP/치지직 정보 긁어오기 (프사, 닉네임, 개설일 등)
+            try {
+                if (item.platform === 'soop') {
+                    const url = `https://m.afreecatv.com/station/${item.id}`;
+                    const html = await axios.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+                    const $ = cheerio.load(html.data);
+                    
+                    data.nickname = $('.nick').text().trim() || item.id;
+                    let img = $('.profile_img > img').attr('src');
+                    if(img) data.profile_img = img.startsWith('//') ? 'https:' + img : img;
+
+                } else if (item.platform === 'chzzk') {
+                    const url = `https://api.chzzk.naver.com/service/v1/channels/${item.id}`;
+                    const response = await axios.get(url);
+                    const content = response.data.content;
+                    
+                    if (content) {
+                        data.nickname = content.channelName;
+                        data.profile_img = content.channelImageUrl;
+                        data.channel_open_date = content.openDate; // 개설일
+                    }
+                }
+            } catch (crawlErr) {
+                console.error(`크롤링 실패 (${item.id}):`, crawlErr.message);
+                // 크롤링 실패해도 그룹명이나 ID는 저장되게 그냥 진행
+            }
+
+            // 4. DB에 저장 (Upsert: 있으면 수정, 없으면 추가)
+            const { error } = await supabase.from('streamers').upsert(data);
+            if (error) throw error;
+            
+            results.push(data);
+
+        } catch (e) {
+            console.error(`DB Error (${item.id}):`, e.message);
         }
-
-        res.status(200).json({ message: 'Sync complete', results });
-
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Server Error' });
     }
+
+    res.status(200).json({ success: true, updated: results.length });
 }
