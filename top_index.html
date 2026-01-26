@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌲 숲 스트리머 대시보드</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* 1. 디자인 (스타일) 설정 */
+        :root { --primary: #2ed573; --bg: #f1f2f6; --card-bg: #ffffff; }
+        body { margin: 0; padding: 0; background-color: var(--bg); font-family: 'Pretendard', -apple-system, sans-serif; color: #333; }
+        
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        
+        /* 헤더 */
+        header { text-align: center; margin-bottom: 40px; }
+        h1 { color: var(--primary); margin: 0; font-size: 2rem; }
+        p.subtitle { color: #666; margin-top: 10px; }
+
+        /* 카드 그리드 */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+        .card { background: var(--card-bg); padding: 20px; border-radius: 16px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: transform 0.2s; cursor: pointer; }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+        
+        .profile-img { width: 80px; height: 80px; border-radius: 50%; background: #ddd; margin-bottom: 15px; object-fit: cover; }
+        .bj-name { font-weight: bold; font-size: 1.1rem; margin-bottom: 5px; }
+        .status { font-size: 0.8rem; padding: 4px 12px; border-radius: 20px; color: white; display: inline-block; }
+        .status.live { background-color: #ff4757; }
+        .status.off { background-color: #a4b0be; }
+
+        /* 모달 (팝업창) */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; }
+        .modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; width: 90%; max-width: 500px; border-radius: 20px; padding: 25px; max-height: 80vh; overflow-y: auto; }
+        .close-btn { float: right; font-size: 1.5rem; cursor: pointer; }
+        
+        /* 캘린더 */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 20px; text-align: center; }
+        .cal-head { font-weight: bold; font-size: 0.9rem; color: #888; padding-bottom: 5px; }
+        .cal-day { aspect-ratio: 1; border: 1px solid #eee; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.8rem; position: relative; }
+        .cal-day.active { background-color: #eafef3; border-color: var(--primary); font-weight: bold; color: var(--primary); }
+        .cal-day .time-badge { font-size: 0.6rem; margin-top: 2px; }
+
+        /* 그래프 영역 */
+        .chart-container { margin-top: 30px; height: 200px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>🌲 숲 스트리머 보드</h1>
+        <p class="subtitle">방송 기록 & 통계 대시보드</p>
+    </header>
+
+    <div id="card-list" class="grid"></div>
+</div>
+
+<div id="modal" class="modal-overlay">
+    <div class="modal">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <h2 id="modal-title">방송 상세 기록</h2>
+        
+        <h3 style="margin-top:20px; font-size:1rem;">📅 1월 방송 달력</h3>
+        <div class="calendar-grid" id="calendar"></div>
+
+        <h3 style="margin-top:20px; font-size:1rem;">📈 시청자 추이</h3>
+        <div class="chart-container">
+            <canvas id="myChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 2. 가상의 데이터 (나중에 진짜 데이터로 바꾸면 됩니다!)
+    const STREAMERS = [
+        { id: 'bjs1', name: '숲속대장', img: 'https://via.placeholder.com/100/2ed573/fff?text=S', isLive: true },
+        { id: 'bjs2', name: '게임고수', img: 'https://via.placeholder.com/100/70a1ff/fff?text=G', isLive: false },
+        { id: 'bjs3', name: '먹방요정', img: 'https://via.placeholder.com/100/ff6b81/fff?text=M', isLive: false },
+        { id: 'bjs4', name: '토크장인', img: 'https://via.placeholder.com/100/ffa502/fff?text=T', isLive: true },
+    ];
+
+    // 가상의 달력 데이터 (날짜: 방송분)
+    const MOCK_HISTORY = {
+        '5': 180, '8': 240, '12': 120, '15': 300, '20': 60, '25': 400
+    };
+
+    // 화면 그리기
+    const list = document.getElementById('card-list');
+    
+    STREAMERS.forEach(s => {
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.innerHTML = `
+            <img src="${s.img}" class="profile-img" alt="${s.name}">
+            <div class="bj-name">${s.name}</div>
+            <span class="status ${s.isLive ? 'live' : 'off'}">
+                ${s.isLive ? '🔴 LIVE' : '⚫ OFFLINE'}
+            </span>
+        `;
+        div.onclick = () => openModal(s.name);
+        list.appendChild(div);
+    });
+
+    // 모달 관련 함수
+    function openModal(name) {
+        document.getElementById('modal').style.display = 'block';
+        document.getElementById('modal-title').innerText = `${name}님의 기록`;
+        renderCalendar();
+        renderChart();
+    }
+
+    function closeModal() {
+        document.getElementById('modal').style.display = 'none';
+    }
+
+    // 달력 그리기
+    function renderCalendar() {
+        const cal = document.getElementById('calendar');
+        cal.innerHTML = '';
+        ['일','월','화','수','목','금','토'].forEach(d => cal.innerHTML += `<div class="cal-head">${d}</div>`);
+        
+        for(let i=0; i<31; i++) {
+            const day = i + 1;
+            const time = MOCK_HISTORY[day];
+            let html = `<div class="cal-day ${time ? 'active' : ''}">
+                ${day}
+                ${time ? `<div class="time-badge">${Math.floor(time/60)}h ${time%60}m</div>` : ''}
+            </div>`;
+            cal.innerHTML += html;
+        }
+    }
+
+    // 차트 그리기
+    let myChart = null;
+    function renderChart() {
+        const ctx = document.getElementById('myChart');
+        if(myChart) myChart.destroy();
+        
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['1주', '2주', '3주', '4주'],
+                datasets: [{
+                    label: '평균 시청자 수',
+                    data: [1200, 1900, 1500, 2200],
+                    borderColor: '#2ed573',
+                    tension: 0.3,
+                    fill: false
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    // 배경 클릭 시 닫기
+    window.onclick = function(event) {
+        if (event.target == document.getElementById('modal')) closeModal();
+    }
+</script>
+
+</body>
+</html>
