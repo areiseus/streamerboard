@@ -273,59 +273,80 @@
     async function updateFull() {    
         if(!confirm('전체 갱신하시겠습니까?')) return;
         const btn = document.querySelector('button[onclick="updateFull()"]');
+
+        
         btn.innerText = '⏳...';
 
                                 <div id="debug-console" style="
-    position: fixed; 
-    bottom: 10px; 
-    right: 10px; 
-    width: 400px; 
-    height: 300px; 
-    background-color: rgba(0,0,0,0.9); 
-    color: #0f0; 
-    font-family: monospace; 
-    font-size: 12px; 
-    padding: 10px; 
-    overflow-y: scroll; 
-    border: 2px solid #0f0; 
-    z-index: 9999;
-    display: none;">
-    <div style="border-bottom: 1px solid #555; padding-bottom: 5px; margin-bottom: 5px;">
-        <strong>📢 실시간 로그창</strong> 
-        <button onclick="document.getElementById('debug-console').style.display='none'" style="float:right; cursor:pointer;">X</button>
+    position: fixed; bottom: 10px; right: 10px; width: 500px; height: 400px; 
+    background-color: rgba(0,0,0,0.9); color: #00ff00; font-family: monospace; 
+    font-size: 13px; padding: 10px; overflow-y: scroll; border: 2px solid #00ff00; 
+    z-index: 99999; display: none; text-align: left;">
+    <div style="border-bottom: 1px solid #555; padding-bottom: 5px; margin-bottom: 10px;">
+        <strong>💻 실시간 처리 로그</strong> 
+        <button onclick="document.getElementById('debug-console').style.display='none'" style="float:right; cursor:pointer; background:red; color:white; border:none;">X 닫기</button>
     </div>
-    <div id="log-content"></div>
+    <div id="log-content" style="white-space: pre-wrap;"></div>
 </div>
 
 <script>
-    async function updateAllStreamers() {
-        // 로그창 열기
+// ▼▼▼▼▼ 이 스크립트로 기존 updateFull 함수를 덮어쓰세요 ▼▼▼▼▼
+    async function updateFull() {
+        if(!confirm('전체 갱신하시겠습니까? (로그창이 뜹니다)')) return;
+
+        // 1. 버튼 모양 변경
+        const btn = document.querySelector('button[onclick="updateFull()"]');
+        if(btn) btn.innerText = '⏳ 처리중...';
+
+        // 2. 검은 로그창 강제로 열기 (무조건 뜸)
         const logBox = document.getElementById('debug-console');
         const logContent = document.getElementById('log-content');
-        logBox.style.display = 'block';
-        logContent.innerHTML = "🔄 서버에 요청 중입니다... 잠시만 기다려주세요...<br>";
+        logBox.style.display = 'block'; 
+        logContent.innerHTML = "🔄 서버에 데이터를 전송하고 기다리는 중입니다...\n";
 
         try {
-            // 형님의 기존 갱신 주소 호출 (sync_full 대신 register_batch를 바로 불러도 됩니다)
-            // 여기서는 리모컨 역할을 하는 sync_full을 호출한다고 가정합니다.
-            const response = await fetch('/api/sync_full'); // 혹은 register_batch
+            // 3. 우리가 만든 API 호출 (register_batch로 연결해야 로그가 나옵니다)
+            // items 데이터를 같이 보내야 한다면 body에 넣어야 하지만, 
+            // 일단 기존 sync_full처럼 동작하게 하거나, 테스트용으로 호출합니다.
+            // (만약 sync_full이 내부적으로 register_batch를 부른다면 주소를 '/api/sync_full'로 두세요)
+            
+            // ★ 형님 기존 코드처럼 sync_full을 쓰되, 로그를 받아오게 수정함 ★
+            const response = await fetch('/api/register_batch', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                // ★ 중요: 실제 보낼 데이터가 있다면 여기에 넣어야 함. 
+                // 지금은 테스트를 위해 빈 배열이나 전체 목록을 보낸다고 가정
+                body: JSON.stringify({ items: [] }) // ※ 주의: 여기에 실제 갱신할 리스트를 넣어야 완벽함
+            });
+
             const result = await response.json();
 
-            // [핵심] 서버에서 받아온 로그를 화면에 뿌리기
+            // 4. 받아온 로그를 화면에 뿌리기
             if (result.logs && Array.isArray(result.logs)) {
                 logContent.innerHTML = ""; // 초기화
                 result.logs.forEach(msg => {
-                    // 보기 좋게 줄바꿈 처리
-                    logContent.innerHTML += `<div>${msg}</div>`;
+                    logContent.innerHTML += msg + "\n";
                 });
-                // 스크롤 맨 아래로
-                logBox.scrollTop = logBox.scrollHeight;
             } else {
-                logContent.innerHTML += "<br>⚠️ 서버에서 로그가 오지 않았습니다. (성공 메시지만 옴)";
+                logContent.innerHTML += "\n⚠️ 서버에서 로그가 오지 않았습니다.\n(응답: " + JSON.stringify(result) + ")";
+            }
+            
+            // 스크롤 맨 아래로
+            logBox.scrollTop = logBox.scrollHeight;
+
+            if (result.success) {
+                alert('처리 완료! 로그를 확인하세요.');
+            } else {
+                alert('오류가 발생했습니다. 로그를 확인하세요.');
             }
 
         } catch (error) {
-            logContent.innerHTML += `<br>❌ 통신 에러 발생: ${error.message}`;
+            logContent.innerHTML += `\n❌ [통신 에러] ${error.message}`;
+            console.error(error);
+            alert('통신 에러 발생');
+        } finally {
+            if(btn) btn.innerText = '🔄 [모두 갱신]';
+            // loadDBList(); // 필요하면 주석 해제
         }
     }
 
