@@ -25,9 +25,33 @@
         .highlight { color: #f1c40f; font-weight: bold; }
         .step-box { border-left: 5px solid #3498db; padding-left: 15px; margin-bottom: 20px; }
         
-        /* 삭제 버튼 스타일 */
         .btn-delete { background: #c0392b; font-size: 0.8rem; padding: 5px 10px; margin-left: 5px; }
         .btn-delete:hover { background: #e74c3c; }
+
+        /* 로그창 스타일 */
+        .log-container {
+            margin-top: 20px;
+            background-color: #111;
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 10px;
+        }
+        .log-header {
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+            color: #00ff00;
+            font-weight: bold;
+            font-size: 13px;
+        }
+        #static-log-window {
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            color: #ddd;
+            line-height: 1.6;
+        }
     </style>
 </head>
 <body>
@@ -47,14 +71,12 @@
 
         <div class="panel" style="border: 2px solid #3498db;">
             <h3>📝 1. 등록 대기 리스트 작성</h3>
-            
             <div class="step-box">
                 <div style="margin-bottom:10px;"><span class="highlight">STEP 1. 그룹 생성</span></div>
                 <input type="text" id="localGroupName" placeholder="새 그룹명" style="width: 200px;">
                 <button onclick="addGroupLocal()" style="background:#2ecc71;">➕ 그룹 추가</button>
                 <div id="groupBadgeArea" style="margin-top:10px;"></div>
             </div>
-
             <div class="step-box">
                 <div style="margin-bottom:10px;"><span class="highlight">STEP 2. 스트리머 추가</span></div>
                 <select id="selGroup"><option value="">그룹 선택</option></select>
@@ -65,7 +87,6 @@
                 <input type="text" id="inpId" placeholder="스트리머 ID" style="width:150px;">
                 <button onclick="lookupAndAdd()" style="background:#3498db;">⬇️ 리스트에 담기</button>
             </div>
-
             <table style="margin-top:20px; background:#2a3b4c;">
                 <thead>
                     <tr><th colspan="5" style="background:#2980b9;">💾 저장 대기 목록</th></tr>
@@ -73,7 +94,6 @@
                 </thead>
                 <tbody id="draftBody"></tbody>
             </table>
-
             <div style="text-align:right; margin-top:15px;">
                 <button onclick="saveBatch()" style="background:#e67e22; font-size:1.1rem; padding:12px 20px;">
                     💾 [최초 등록] 실행 (DB 저장)
@@ -81,10 +101,9 @@
             </div>
         </div>
 
-        <div style="background: #2b2b2b; border: 1px solid #444; border-radius: 8px; padding: 20px; margin-top: 20px; color: #fff;">
-            
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">
-                <h3 style="margin: 0; font-size: 18px; color: #eee;">📊 DB 등록 현황 (<span id="totalCnt">0</span>명)</h3>
+        <div class="panel" style="border: 1px solid #444;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3>📊 DB 등록 현황 (<span id="totalCnt">0</span>명)</h3>
                 <button onclick="updateFull()" style="background-color: #d9534f; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">
                     🔄 [모두 갱신]
                 </button>
@@ -103,22 +122,18 @@
                         </tr>
                     </thead>
                     <tbody id="dbBody">
-                        <tr>
-                            <td colspan="6" style="padding: 20px; color: #999;">데이터 로딩 중...</td>
-                        </tr>
+                        <tr><td colspan="6" style="padding: 20px; color: #999;">로딩 중...</td></tr>
                     </tbody>
                 </table>
             </div>
 
-            <div style="margin-top: 20px; background-color: #000; border: 1px solid #00ff00; border-radius: 4px; padding: 10px;">
-                <div style="color: #00ff00; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 5px; font-size: 13px;">
-                    🖥️ 실시간 갱신 로그 (Processing Log)
-                </div>
-                <div id="static-log-window" style="height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; color: #ddd; line-height: 1.6;">
-                    대기 중... [모두 갱신] 버튼을 누르면 여기에 로그가 출력됩니다.
+            <div class="log-container">
+                <div class="log-header">🖥️ 실시간 갱신 로그 (항상 표시됨)</div>
+                <div id="static-log-window">
+                    [System] 로그창이 준비되었습니다.<br>
+                    👉 [모두 갱신] 버튼을 누르면 여기에 상세 로그가 출력됩니다.
                 </div>
             </div>
-
         </div>
     </div>
     
@@ -167,7 +182,7 @@
         });
     }
 
-    // 3. 리스트에 담기 (룩업)
+    // 3. 리스트에 담기
     async function lookupAndAdd() {
         const group_name = document.getElementById('selGroup').value;
         const platform = document.getElementById('selPlatform').value;
@@ -192,7 +207,6 @@
                 throw new Error(errData.error || '조회 오류');
             }
             const data = await res.json();
-
             if(data.status === 'duplicate') return alert('이미 DB에 등록된 스트리머입니다.');
 
             draftList.push({
@@ -203,9 +217,7 @@
             });
             renderDraft();
             document.getElementById('inpId').value = ''; 
-        } catch(e) { 
-            alert('조회 실패: ' + e.message); 
-        }
+        } catch(e) { alert('조회 실패: ' + e.message); }
     }
 
     function renderDraft() {
@@ -225,3 +237,119 @@
         draftList.splice(idx, 1);
         renderDraft();
     }
+
+    // 4. 최초 등록 (배치 저장)
+    async function saveBatch() {
+        if(draftList.length === 0) return alert('목록이 비었습니다.');
+        const btn = document.querySelector('button[onclick="saveBatch()"]');
+        btn.innerText = '⏳ 저장 중...'; btn.disabled = true;
+
+        try {
+            const res = await fetch('/api/register_batch', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ items: draftList })
+            });
+            const result = await res.json();
+            if(res.ok) {
+                alert(`✅ ${result.count}명 저장 완료!`);
+                draftList = []; renderDraft(); loadDBList(); 
+            } else { throw new Error(result.error || '저장 실패'); }
+        } catch(e) { alert('오류: ' + e.message); }
+        btn.innerText = '💾 [최초 등록] 실행'; btn.disabled = false;
+    }
+
+    // 5. 삭제
+    async function deleteStreamer(id) {
+        if(!confirm('정말 삭제하시겠습니까?')) return;
+        try {
+            const res = await fetch('/api/delete_streamer', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ id: id })
+            });
+            if(res.ok) {
+                loadDBList(); 
+            } else {
+                const err = await res.json();
+                alert('삭제 실패: ' + err.error);
+            }
+        } catch(e) { alert('삭제 오류: ' + e.message); }
+    }
+
+    // 6. DB 목록 로드
+    async function loadDBList() {
+        try {
+            const res = await fetch('/api/get_list');
+            const data = await res.json();
+            data.forEach(m => { if(m.group_name) groupSet.add(m.group_name); });
+            renderGroups();
+            document.getElementById('totalCnt').innerText = data.length;
+            
+            document.getElementById('dbBody').innerHTML = data.map(m => `
+                <tr>
+                    <td style="color:#f1c40f;">${m.group_name || '-'}</td>
+                    <td><span class="badge ${m.platform}">${m.platform}</span></td>
+                    <td>${m.id}</td>
+                    <td>${m.nickname}</td>
+                    <td style="font-size:0.8rem; color:#aaa;">${m.total_broadcast_time || '-'}</td>
+                    <td>
+                        ${m.is_active ? '✅' : '🚫'}
+                        <button class="btn-delete" onclick="deleteStreamer('${m.id}')">삭제</button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch(e) { console.error(e); }
+    }
+
+    // 7. [핵심] 모두 갱신 & 로그 출력 함수
+    async function updateFull() {
+        if(!confirm('전체 갱신하시겠습니까?')) return;
+
+        // 로그창 요소 잡기
+        const logWindow = document.getElementById('static-log-window');
+        const btn = document.querySelector('button[onclick="updateFull()"]');
+
+        // 로그창에 시작 메시지 찍기
+        if(logWindow) {
+            logWindow.innerHTML = "🔄 [1/3] 서버와 통신 준비 중...<br>";
+            logWindow.scrollTop = logWindow.scrollHeight;
+        }
+        if(btn) btn.innerText = '⏳ 처리중...';
+
+        try {
+            // API 호출 (빈 배열 전송 -> 전체 갱신)
+            const res = await fetch('/api/register_batch', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: [] }) 
+            });
+            const json = await res.json();
+
+            // 받아온 로그를 화면에 뿌리기
+            if(logWindow && json.logs && Array.isArray(json.logs)) {
+                logWindow.innerHTML = ""; // 기존 대기 메시지 지움
+                
+                json.logs.forEach(msg => {
+                    let style = "color: #ccc;";
+                    if(msg.includes('에러') || msg.includes('실패')) style = "color: #ff5555; font-weight:bold;";
+                    else if(msg.includes('성공')) style = "color: #55ff55;";
+                    else if(msg.includes('주소')) style = "color: #ffff00;";
+                    else if(msg.includes('SOOP')) style = "color: #00ffff;";
+
+                    logWindow.innerHTML += `<div style="${style}">${msg}</div>`;
+                });
+                logWindow.innerHTML += "<br>✅ <strong>모든 작업이 완료되었습니다.</strong>";
+                logWindow.scrollTop = logWindow.scrollHeight; // 맨 아래로 스크롤
+            } else if (logWindow) {
+                logWindow.innerHTML += `<br>⚠️ 서버 로그 없음: ${JSON.stringify(json)}`;
+            }
+
+        } catch (e) {
+            if(logWindow) logWindow.innerHTML += `<br>❌ [통신 에러] ${e.message}`;
+        } finally {
+            if(btn) btn.innerText = '🔄 [모두 갱신]';
+            loadDBList(); // 목록 갱신
+        }
+    }
+</script>    
+</body>
+</html>
