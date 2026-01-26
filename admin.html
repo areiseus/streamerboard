@@ -1,3 +1,108 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>관리자 페이지</title>
+    <style>
+        body { background: #222; color: #fff; padding: 20px; font-family: 'Pretendard', sans-serif; max-width: 1200px; margin: 0 auto; }
+        
+        /* [1] 로그인 오버레이 */
+        #loginOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .login-box { background: #333; padding: 40px; border-radius: 10px; border: 1px solid #555; text-align: center; width: 300px; }
+        
+        /* 메인 컨텐츠 (로그인 전에는 안 보임) */
+        #adminContent { display: none; }
+
+        .panel { background: #333; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #444; }
+        
+        input, select { padding: 10px; background: #444; border: 1px solid #555; color: white; border-radius: 4px; margin-right: 5px; box-sizing: border-box; }
+        button { cursor: pointer; border: none; border-radius: 4px; padding: 10px 15px; color: white; font-weight: bold; transition: 0.2s; }
+        button:hover { opacity: 0.8; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
+        th { background: #444; padding: 10px; text-align: center; border-bottom: 2px solid #555; }
+        td { border-bottom: 1px solid #555; padding: 10px; text-align: center; }
+        
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; color:black; font-weight: bold;}
+        .soop { background: #42C769; } .chzzk { background: #00E59D; }
+        
+        .highlight { color: #f1c40f; font-weight: bold; }
+        .step-box { border-left: 5px solid #3498db; padding-left: 15px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+    <div id="loginOverlay">
+        <div class="login-box">
+            <h2>🔒 관리자 접속</h2>
+            <p style="color:#aaa; font-size:0.9rem; margin-bottom:20px;">admin.json 비밀번호 입력</p>
+            <input type="password" id="adminPw" placeholder="Password" style="width:100%; margin-bottom:10px;" onkeyup="if(event.key==='Enter') checkLogin()">
+            <button onclick="checkLogin()" style="background:#0984e3; width:100%;">입장</button>
+        </div>
+    </div>
+
+    <div id="adminContent">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2>🛠️ 스트리머 DB 관리자</h2>
+            <a href="index.html" style="color:#aaa; text-decoration:none; font-size:1.5rem;">🏠</a>
+        </div>
+
+        <div class="panel" style="border: 2px solid #3498db;">
+            <h3>📝 1. 등록 대기 리스트 작성</h3>
+            
+            <div class="step-box">
+                <div style="margin-bottom:10px;"><span class="highlight">STEP 1. 그룹 생성</span></div>
+                <input type="text" id="localGroupName" placeholder="새 그룹명 (예: 왁타버스)" style="width: 200px;">
+                <button onclick="addGroupLocal()" style="background:#2ecc71;">➕ 그룹 추가</button>
+                <div id="groupBadgeArea" style="margin-top:10px;"></div>
+            </div>
+
+            <div class="step-box">
+                <div style="margin-bottom:10px;"><span class="highlight">STEP 2. 스트리머 추가</span></div>
+                <select id="selGroup">
+                    <option value="">그룹 선택</option>
+                </select>
+                <select id="selPlatform">
+                    <option value="soop">SOOP (숲)</option>
+                    <option value="chzzk">CHZZK (치지직)</option>
+                </select>
+                <input type="text" id="inpId" placeholder="스트리머 ID" style="width:150px;">
+                <button onclick="lookupAndAdd()" style="background:#3498db;">⬇️ 리스트에 담기</button>
+            </div>
+
+            <table style="margin-top:20px; background:#2a3b4c;">
+                <thead>
+                    <tr><th colspan="5" style="background:#2980b9;">💾 저장 대기 목록 (아래 [DB 저장] 버튼을 눌러야 실제 저장됨)</th></tr>
+                    <tr><th>그룹명</th><th>플랫폼</th><th>ID</th><th>닉네임</th><th>관리</th></tr>
+                </thead>
+                <tbody id="draftBody"></tbody>
+            </table>
+
+            <div style="text-align:right; margin-top:15px;">
+                <button onclick="saveBatch()" style="background:#e67e22; font-size:1.1rem; padding:12px 20px;">
+                    💾 [최초 등록] 실행 (DB 저장 + 상세정보 수집)
+                </button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3>📋 DB 등록 현황 (<span id="totalCnt">0</span>명)</h3>
+                <button onclick="updateFull()" style="background:#e74c3c;">🔄 [모두 갱신]</button>
+            </div>
+            <table>
+                <thead>
+                    <tr><th>그룹명</th><th>플랫폼</th><th>ID</th><th>닉네임</th><th>방송국 개설일</th><th>상태</th></tr>
+                </thead>
+                <tbody id="dbBody"></tbody>
+            </table>
+        </div>
+    </div>
+
 <script>
     // --- 전역 변수 ---
     let draftList = []; 
@@ -7,13 +112,13 @@
     async function checkLogin() {
         try {
             const res = await fetch('admin.json');
-            if(!res.ok) throw new Error("admin.json 파일 없음");
+            if(!res.ok) throw new Error("admin.json 파일이 없습니다.");
             const cfg = await res.json();
             
             if(document.getElementById('adminPw').value === cfg.password) {
                 document.getElementById('loginOverlay').style.display = 'none';
                 document.getElementById('adminContent').style.display = 'block';
-                init(); 
+                init(); // 로그인 성공 시 초기화
             } else {
                 alert('비밀번호가 틀렸습니다.');
             }
@@ -22,11 +127,12 @@
         }
     }
 
+    // 초기화 함수
     async function init() {
         await loadDBList(); 
     }
 
-    // 2. 그룹 생성 (화면용)
+    // 2. 그룹 관리 (HTML 로컬)
     function addGroupLocal() {
         const name = document.getElementById('localGroupName').value.trim();
         if(!name) return alert('그룹명을 입력하세요.');
@@ -53,27 +159,21 @@
         });
     }
 
-    // ==========================================
-    // [수정됨] 리스트에 담기 (group_name 사용)
-    // ==========================================
+    // 3. 리스트에 담기 (group_name 사용)
     async function lookupAndAdd() {
-        // 1. 선택된 그룹명 가져오기
         const group_name = document.getElementById('selGroup').value;
         const platform = document.getElementById('selPlatform').value;
         const idInput = document.getElementById('inpId');
         
-        if (!idInput) return alert('HTML 에러: inpId 입력창을 찾을 수 없습니다.');
+        if (!idInput) return alert('HTML 에러: 입력창이 없습니다.');
         const id = idInput.value.trim();
 
-        // 2. 입력값 검사
         if(!group_name) return alert('그룹을 먼저 선택해주세요.');
-        if(!id) return alert('아이디를 입력해주세요.');
+        if(!id) return alert('ID를 입력해주세요.');
 
-        // 3. 이미 대기 목록에 있는지 확인
-        if(draftList.find(d => d.id === id)) return alert('이미 리스트에 추가된 아이디입니다.');
+        if(draftList.find(d => d.id === id)) return alert('이미 대기 목록에 있습니다.');
 
         try {
-            // 4. 조회 API 호출
             const res = await fetch('/api/lookup', {
                 method: 'POST', 
                 headers: {'Content-Type': 'application/json'},
@@ -82,32 +182,27 @@
 
             if (!res.ok) {
                 const errData = await res.json();
-                throw new Error(errData.error || '조회 중 서버 오류');
+                throw new Error(errData.error || '조회 오류');
             }
-
             const data = await res.json();
 
-            // DB 중복 체크 결과
-            if(data.status === 'duplicate') return alert('이미 DB에 등록된 스트리머입니다.');
+            if(data.status === 'duplicate') return alert('이미 DB에 있는 스트리머입니다.');
 
-            // 5. 리스트에 추가 (★여기가 중요: group_name으로 저장)
+            // 목록에 추가 (group_name 사용)
             draftList.push({
-                group_name: group_name, // group_id 아님. group_name임.
+                group_name: group_name,
                 platform: platform,
                 id: id,
                 nickname: data.nickname || id
             });
-            
-            renderDraft(); // 화면 갱신
+            renderDraft();
             document.getElementById('inpId').value = ''; 
 
         } catch(e) { 
             alert('조회 실패: ' + e.message); 
-            console.error(e);
         }
     }
 
-    // [수정됨] 화면 그리기 (group_name 사용)
     function renderDraft() {
         const tbody = document.getElementById('draftBody');
         tbody.innerHTML = draftList.map((item, idx) => `
@@ -151,20 +246,20 @@
                 throw new Error(result.error || '저장 실패');
             }
         } catch(e) { 
-            alert('저장 오류: ' + e.message); 
+            alert('오류: ' + e.message); 
         }
         
-        btn.innerText = '💾 [DB에 최종 저장하기]';
+        btn.innerText = '💾 [최초 등록] 실행 (DB 저장 + 상세정보 수집)';
         btn.disabled = false;
     }
 
-    // 5. DB 목록 불러오기 (group_name 기준)
+    // 5. DB 목록 불러오기
     async function loadDBList() {
         try {
             const res = await fetch('/api/get_list');
             const data = await res.json();
 
-            // 데이터 로드 시 group_name 확인
+            // group_name 컬럼 확인하여 그룹 목록 갱신
             data.forEach(m => { 
                 if(m.group_name) groupSet.add(m.group_name); 
             });
@@ -183,13 +278,13 @@
                 </tr>
             `).join('');
         } catch(e) {
-            console.error("목록 로드 실패", e);
+            console.error(e);
         }
     }
 
     // 6. [모두 갱신]
     async function updateFull() {
-        if(!confirm('모든 데이터를 갱신합니다.')) return;
+        if(!confirm('모든 데이터를 갱신하시겠습니까?')) return;
         const btn = document.querySelector('button[onclick="updateFull()"]');
         btn.innerText = '⏳ 갱신 중...';
         await fetch('/api/sync_full', { method:'POST' });
@@ -198,3 +293,5 @@
         loadDBList();
     }
 </script>
+</body>
+</html>
