@@ -1,4 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
+import fs from 'fs';
+import path from 'path';
 
 const supabase = createClient(
     process.env.streamer_db_URL,
@@ -6,40 +8,57 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
-    // 1. 데이터 받기
     const { items } = req.body; 
 
     if (!items || items.length === 0) {
-        return res.status(400).json({ error: '저장할 데이터가 없습니다.' });
+        return res.status(400).json({ error: '데이터 없음' });
     }
 
-    // 봇 차단 방지용 헤더 (형님이 쓰시던 것 그대로)
-    const headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
-    };
+    // 1. admin.json에서 형님이 저장한 쿠키 변수 가져오기
+    let soopCookieVal = '';
+    let chzzkCookieVal = '';
+    
+    try {
+        const filePath = path.join(process.cwd(), 'admin.json');
+        if (fs.existsSync(filePath)) {
+            const fileData = fs.readFileSync(filePath, 'utf8');
+            const json = JSON.parse(fileData);
+            
+            // 형님이 admin.json에 적은 변수명 그대로 읽어옴
+            soopCookieVal = json.img_soop_cookie || '';
+            chzzkCookieVal = json.img_chzzk_cookie || '';
+        }
+    } catch (err) {
+        console.error('admin.json 읽기 실패:', err);
+    }
 
     try {
         const results = await Promise.all(items.map(async (item) => {
             
-            // DB에 넣을 기본 틀
             let dbData = {
                 id: item.id,
                 platform: item.platform,
                 group_name: item.group_name, 
-                nickname: item.nickname,     
+                nickname: item.nickname,
                 is_active: true,
                 last_updated_at: new Date(),
                 profile_img: null,
-                total_broadcast_time: null // [변경] 개설일 대신 이거 넣음
+                total_broadcast_time: null 
+            };
+
+            // 기본 헤더
+            let headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'application/json, text/plain, */*'
             };
 
             try {
-                // ===============================================
-                // [1] SOOP (아프리카) 상세 정보 수집
-                // ===============================================
+                // [SOOP / 아프리카]
                 if (item.platform === 'soop') {
+                    // 아프리카 쿠키 적용
+                    if (soopCookieVal) headers['Cookie'] = soopCookieVal;
+                    headers['Referer'] = `https://bj.afreecatv.com/${item.id}`;
+
                     const resp = await fetch(`https://bjapi.afreecatv.com/api/${item.id}/station`, { headers });
                     
                     if (resp.ok) {
@@ -47,12 +66,12 @@ export default async function handler(req, res) {
                         if (json && json.station) {
                             dbData.nickname = json.station.user_nick;
                             
-                            // [수정됨] 총 방송 시간 수집 (단순 대입이라 코드가 짧음)
+                            // 방송 시간 (초 단위 저장)
                             if (json.station.total_broad_time) {
                                 dbData.total_broadcast_time = json.station.total_broad_time;
                             }
-                            
-                            // 프로필 이미지 (형님 로직 유지)
+
+                            // 이미지 주소 (https 붙이기)
                             let img = json.station.image_profile;
                             if (img) {
                                 if (img.startsWith('//')) dbData.profile_img = 'https:' + img;
@@ -62,45 +81,37 @@ export default async function handler(req, res) {
                         }
                     }
                 } 
-                // ===============================================
-                // [2] CHZZK (치지직) 상세 정보 수집
-                // ===============================================
+                // [CHZZK / 치지직]
                 else if (item.platform === 'chzzk') {
+                    // 치지직 쿠키 적용
+                    if (chzzkCookieVal) headers['Cookie'] = chzzkCookieVal;
+
                     const resp = await fetch(`https://api.chzzk.naver.com/service/v1/channels/${item.id}`, { headers });
                     
                     if (resp.ok) {
                         const json = await resp.json();
                         if (json && json.content) {
                             dbData.nickname = json.content.channelName;
+                            // 치지직 이미지 저장
                             dbData.profile_img = json.content.channelImageUrl || null;
-                            
-                            // 치지직은 '총 방송 시간'을 주지 않으므로 null 유지
-                            // (날짜 계산하던 긴 코드가 빠져서 전체 길이가 줄어듦)
+                            dbData.total_broadcast_time = null;
                         }
                     }
                 }
             } catch (crawlErr) {
-                console.error(`[수집 실패] ${item.id}:`, crawlErr);
+                console.error(`수집 실패 (${item.id})`);
             }
 
             return dbData;
         }));
 
-        // 3. DB에 진짜 저장 (Upsert)
-        const { data, error } = await supabase
-            .from('streamers')
-            .upsert(results)
-            .select();
-
-        if (error) {
-            console.error('DB Error:', error);
-            throw error;
-        }
+        // DB 저장 (Upsert)
+        const { error } = await supabase.from('streamers').upsert(results);
+        if (error) throw error;
 
         res.status(200).json({ success: true, count: results.length });
 
     } catch (e) {
-        console.error(e);
         res.status(500).json({ error: e.message });
     }
 }
