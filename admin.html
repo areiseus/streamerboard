@@ -31,6 +31,16 @@
     </style>
 </head>
 <body>
+    <div id="debug-console" style="
+    display:none; position:fixed; bottom:10px; right:10px; width:400px; height:300px;
+    background:rgba(0,0,0,0.9); color:#0f0; border:2px solid #0f0; z-index:9999;
+    padding:10px; overflow-y:scroll; font-family:monospace; font-size:12px;">
+    <div style="border-bottom:1px solid #555; margin-bottom:5px;">
+        <strong>📢 갱신 로그</strong>
+        <button onclick="this.parentElement.parentElement.style.display='none'" style="float:right; color:white; background:red; border:none; cursor:pointer;">X</button>
+    </div>
+    <div id="log-content"></div>
+</div>
 
     <div id="loginOverlay">
         <div class="login-box">
@@ -270,92 +280,53 @@
         } catch(e) { console.error(e); }
     }
 
-    async function updateFull() {    
-        if(!confirm('전체 갱신하시겠습니까?')) return;
-        const btn = document.querySelector('button[onclick="updateFull()"]');
+   async function updateFull() {
+    // 1. [기존 유지] 확인 창
+    if(!confirm('전체 갱신하시겠습니까?')) return;
 
-        
-        btn.innerText = '⏳...';
-// ▼▼▼▼▼ 이 스크립트로 기존 updateFull 함수를 덮어쓰세요 ▼▼▼▼▼
-    async function updateFull() {
-        if(!confirm('전체 갱신하시겠습니까? (로그창이 뜹니다)')) return;
+    // 2. [기존 유지] 버튼 로딩 표시
+    const btn = document.querySelector('button[onclick="updateFull()"]');
+    if(btn) btn.innerText = '⏳...';
 
-        // 1. 버튼 모양 변경
-        const btn = document.querySelector('button[onclick="updateFull()"]');
-        if(btn) btn.innerText = '⏳ 처리중...';
-
-        // 2. 검은 로그창 강제로 열기 (무조건 뜸)
-        const logBox = document.getElementById('debug-console');
-        const logContent = document.getElementById('log-content');
-        logBox.style.display = 'block'; 
-        logContent.innerHTML = "🔄 서버에 데이터를 전송하고 기다리는 중입니다...\n";
-
-        try {
-            // 3. 우리가 만든 API 호출 (register_batch로 연결해야 로그가 나옵니다)
-            // items 데이터를 같이 보내야 한다면 body에 넣어야 하지만, 
-            // 일단 기존 sync_full처럼 동작하게 하거나, 테스트용으로 호출합니다.
-            // (만약 sync_full이 내부적으로 register_batch를 부른다면 주소를 '/api/sync_full'로 두세요)
-            
-            // ★ 형님 기존 코드처럼 sync_full을 쓰되, 로그를 받아오게 수정함 ★
-            const response = await fetch('/api/register_batch', { 
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                // ★ 중요: 실제 보낼 데이터가 있다면 여기에 넣어야 함. 
-                // 지금은 테스트를 위해 빈 배열이나 전체 목록을 보낸다고 가정
-                body: JSON.stringify({ items: [] }) // ※ 주의: 여기에 실제 갱신할 리스트를 넣어야 완벽함
-            });
-
-            const result = await response.json();
-
-            // 4. 받아온 로그를 화면에 뿌리기
-            if (result.logs && Array.isArray(result.logs)) {
-                logContent.innerHTML = ""; // 초기화
-                result.logs.forEach(msg => {
-                    logContent.innerHTML += msg + "\n";
-                });
-            } else {
-                logContent.innerHTML += "\n⚠️ 서버에서 로그가 오지 않았습니다.\n(응답: " + JSON.stringify(result) + ")";
-            }
-            
-            // 스크롤 맨 아래로
-            logBox.scrollTop = logBox.scrollHeight;
-
-            if (result.success) {
-                alert('처리 완료! 로그를 확인하세요.');
-            } else {
-                alert('오류가 발생했습니다. 로그를 확인하세요.');
-            }
-
-        } catch (error) {
-            logContent.innerHTML += `\n❌ [통신 에러] ${error.message}`;
-            console.error(error);
-            alert('통신 에러 발생');
-        } finally {
-            if(btn) btn.innerText = '🔄 [모두 갱신]';
-            // loadDBList(); // 필요하면 주석 해제
-        }
-    }    
-    // 형님의 [모두 갱신] 버튼에 이 함수를 연결하세요.
-    // 예: <button onclick="updateAllStreamers()">모두 갱신</button>
-
-        
-        await fetch('/api/sync_full', { method:'POST' });
-        alert('갱신 완료');
-        btn.innerText = '🔄 [모두 갱신]';
-        loadDBList();
+    // ▼▼▼ [추가된 부분] 로그창 열기 ▼▼▼
+    const logBox = document.getElementById('debug-console');
+    const logContent = document.getElementById('log-content');
+    if(logBox) {
+        logBox.style.display = 'block';
+        logContent.innerHTML = "서버 요청 중... 잠시만 기다리세요...<br>";
     }
+    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+    try {
+        // 3. [기존 유지 + 수정] fetch 결과를 변수(res)에 담습니다.
+        // (기존에는 await fetch(...)하고 끝났지만, 로그를 보려면 결과를 받아야 합니다)
+        const res = await fetch('/api/sync_full', { method: 'POST' });
+        const json = await res.json(); // 응답 내용을 까봅니다.
+
+        // ▼▼▼ [추가된 부분] 받아온 로그를 화면에 뿌리기 ▼▼▼
+        if(json.logs && Array.isArray(json.logs) && logContent) {
+            logContent.innerHTML = ""; // 기존 내용 지우고
+            json.logs.forEach(msg => {
+                logContent.innerHTML += `<div>${msg}</div>`; // 로그 한 줄씩 출력
+            });
+            logBox.scrollTop = logBox.scrollHeight; // 스크롤 맨 아래로
+        }
+        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+        // 4. [기존 유지] 완료 알림
+        alert('갱신 완료');
+
+    } catch (e) {
+        console.error(e);
+        if(logContent) logContent.innerHTML += `<br>❌ 에러 발생: ${e.message}`;
+        alert('에러가 발생했습니다.');
+    }
+
+    // 5. [기존 유지] 버튼 원복 및 목록 갱신
+    if(btn) btn.innerText = '🔄 [모두 갱신]';
+    loadDBList();
+}
+
 </script>
-<div id="debug-console" style="
-    position: fixed; bottom: 10px; right: 10px; width: 500px; height: 400px; 
-    background-color: rgba(0,0,0,0.9); color: #00ff00; font-family: monospace; 
-    font-size: 13px; padding: 10px; overflow-y: scroll; border: 2px solid #00ff00; 
-    z-index: 99999; display: none; text-align: left;">
-    <div style="border-bottom: 1px solid #555; padding-bottom: 5px; margin-bottom: 10px;">
-        <strong>💻 실시간 처리 로그</strong> 
-        <button onclick="document.getElementById('debug-console').style.display='none'" style="float:right; cursor:pointer; background:red; color:white; border:none;">X 닫기</button>
-    </div>
-    <div id="log-content" style="white-space: pre-wrap;"></div>
-</div>
-    
 </body>
 </html>
