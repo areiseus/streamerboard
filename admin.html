@@ -17,8 +17,9 @@
         button { background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
         button:hover { opacity: 0.9; }
         
+        /* 패널 스타일 */
         .sync-panel { background-color: #e3fcf0; border: 1px solid #42C769; margin-bottom: 10px; border-radius: 10px; }
-        .history-panel { background-color: #e0f2fe; border: 1px solid #3b82f6; margin-bottom: 20px; border-radius: 10px; } /* 파란색 패널 */
+        .history-panel { background-color: #e0f2fe; border: 1px solid #3b82f6; margin-bottom: 20px; border-radius: 10px; }
 
         .group-section { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
         .group-header { display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px dashed #ddd; padding-bottom: 10px; }
@@ -117,7 +118,6 @@
         dashboardData.ungrouped = convert(dashboardData.ungrouped);
     }
 
-    // 모든 멤버 목록 추출 헬퍼
     function getAllMembers() {
         const allItems = [];
         const pushMembers = (list) => list.forEach(m => {
@@ -128,7 +128,7 @@
         return allItems;
     }
 
-    // 1. 프로필 동기화
+    // 기능 1. 프로필 동기화
     async function triggerSync() {
         const btn = document.getElementById('sync-btn');
         const allItems = getAllMembers();
@@ -149,13 +149,12 @@
         finally { btn.innerText = "⚡ 프로필 갱신"; btn.disabled = false; }
     }
 
-    // 2. [신규] 기록 수집 (History)
+    // 기능 2. 기록 수집
     async function triggerHistory() {
         const btn = document.getElementById('hist-btn');
         const allItems = getAllMembers();
         if(allItems.length === 0) return alert("등록된 스트리머가 없습니다.");
         
-        // 날짜 선택 (기본값: 어제)
         const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
         const targetDate = prompt("수집할 날짜를 입력하세요 (YYYY-MM-DD)\n(기본값: 어제)", yesterday);
         if(!targetDate) return;
