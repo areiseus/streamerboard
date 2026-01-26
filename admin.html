@@ -11,13 +11,14 @@
         #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .login-box { background: #333; padding: 40px; border-radius: 10px; border: 1px solid #555; text-align: center; width: 300px; }
         
-        /* [패널 공통 스타일] */
+        /* [패널 공통 스타일] - 그냥 박스입니다. */
         #adminContent { display: none; }
         .panel { 
+            display: block; /* 무조건 보임 */
             background: #333; 
             padding: 20px; 
             border-radius: 10px; 
-            margin-bottom: 20px; 
+            margin-bottom: 20px; /* 박스 사이 간격 */
             border: 1px solid #444; 
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
@@ -32,25 +33,27 @@
         th { background: #444; padding: 10px; text-align: center; border-bottom: 2px solid #555; }
         td { border-bottom: 1px solid #555; padding: 10px; text-align: center; }
         
-        /* [기타 스타일] */
+        /* [기타] */
         .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; color:black; font-weight: bold;}
         .soop { background: #42C769; } .chzzk { background: #00E59D; }
         .highlight { color: #f1c40f; font-weight: bold; }
         .step-box { border-left: 5px solid #3498db; padding-left: 15px; margin-bottom: 20px; }
         .btn-delete { background: #c0392b; font-size: 0.8rem; padding: 5px 10px; margin-left: 5px; }
 
-        /* ★★★ [로그창 내부 스타일] 고정 크기(200px) & 스크롤 ★★★ */
+        /* ★★★ [로그창 스타일] ★★★ */
+        /* display: block으로 박아놨으니 안 보일 수가 없음 */
         #static-log-window {
+            display: block; 
             height: 200px;            /* 높이 고정 */
-            overflow-y: scroll;       /* 내용 넘치면 스크롤 */
-            background-color: #111;   /* 검은 배경 */
+            overflow-y: scroll;       /* 스크롤바 */
+            background-color: #000;   /* 검은 배경 */
             padding: 15px;
             border: 1px solid #555;
             font-family: 'Courier New', monospace;
             font-size: 13px;
-            color: #ddd;
+            color: #0f0; /* 글자색 초록색 */
             line-height: 1.6;
-            white-space: pre-wrap;    /* 줄바꿈 유지 */
+            white-space: pre-wrap;
         }
     </style>
 </head>
@@ -104,12 +107,12 @@
 
         <div class="panel" style="border: 2px solid #00ff00;">
             <div style="border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 10px;">
-                <h3 style="margin:0; color: #00ff00;">🖥️ 시스템 처리 로그</h3>
+                <h3 style="margin:0; color: #00ff00;">🖥️ 시스템 처리 로그 (System Log)</h3>
             </div>
             
             <div id="static-log-window">
-                [대기중] 로그창이 여기에 고정되었습니다.<br>
-                아래의 <b>[모두 갱신]</b> 버튼을 누르면 작업 내용이 이곳에 표시됩니다.
+                [시스템 대기중] 로그창이 정상적으로 배치되었습니다.<br>
+                아래 <b>[모두 갱신]</b> 버튼을 누르면 작업 내용이 여기에 뜹니다.
             </div>
         </div>
 
@@ -307,7 +310,7 @@
     async function updateFull() {
         if(!confirm('전체 갱신하시겠습니까?')) return;
 
-        // ★★★ 로그창 찾기 ★★★
+        // 로그창 찾기
         const logWindow = document.getElementById('static-log-window');
         const btn = document.querySelector('button[onclick="updateFull()"]');
 
