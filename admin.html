@@ -276,20 +276,6 @@
 
         
         btn.innerText = '⏳...';
-
-                                <div id="debug-console" style="
-    position: fixed; bottom: 10px; right: 10px; width: 500px; height: 400px; 
-    background-color: rgba(0,0,0,0.9); color: #00ff00; font-family: monospace; 
-    font-size: 13px; padding: 10px; overflow-y: scroll; border: 2px solid #00ff00; 
-    z-index: 99999; display: none; text-align: left;">
-    <div style="border-bottom: 1px solid #555; padding-bottom: 5px; margin-bottom: 10px;">
-        <strong>💻 실시간 처리 로그</strong> 
-        <button onclick="document.getElementById('debug-console').style.display='none'" style="float:right; cursor:pointer; background:red; color:white; border:none;">X 닫기</button>
-    </div>
-    <div id="log-content" style="white-space: pre-wrap;"></div>
-</div>
-
-<script>
 // ▼▼▼▼▼ 이 스크립트로 기존 updateFull 함수를 덮어쓰세요 ▼▼▼▼▼
     async function updateFull() {
         if(!confirm('전체 갱신하시겠습니까? (로그창이 뜹니다)')) return;
@@ -348,14 +334,9 @@
             if(btn) btn.innerText = '🔄 [모두 갱신]';
             // loadDBList(); // 필요하면 주석 해제
         }
-    }
-
-    
+    }    
     // 형님의 [모두 갱신] 버튼에 이 함수를 연결하세요.
     // 예: <button onclick="updateAllStreamers()">모두 갱신</button>
-
-
-        
 
         
         await fetch('/api/sync_full', { method:'POST' });
@@ -364,5 +345,17 @@
         loadDBList();
     }
 </script>
+<div id="debug-console" style="
+    position: fixed; bottom: 10px; right: 10px; width: 500px; height: 400px; 
+    background-color: rgba(0,0,0,0.9); color: #00ff00; font-family: monospace; 
+    font-size: 13px; padding: 10px; overflow-y: scroll; border: 2px solid #00ff00; 
+    z-index: 99999; display: none; text-align: left;">
+    <div style="border-bottom: 1px solid #555; padding-bottom: 5px; margin-bottom: 10px;">
+        <strong>💻 실시간 처리 로그</strong> 
+        <button onclick="document.getElementById('debug-console').style.display='none'" style="float:right; cursor:pointer; background:red; color:white; border:none;">X 닫기</button>
+    </div>
+    <div id="log-content" style="white-space: pre-wrap;"></div>
+</div>
+    
 </body>
 </html>
