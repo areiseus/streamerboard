@@ -2,12 +2,18 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>UI 배치 관리자</title>
+    <title>관리자 페이지</title>
     <style>
         body { background: #222; color: #fff; padding: 20px; font-family: sans-serif; max-width: 800px; margin: 0 auto; }
+        
+        /* 버튼 스타일 */
         .btn-save { width: 100%; background: #00cec9; font-weight: bold; font-size: 1.2rem; cursor: pointer; padding: 15px; border: none; margin-bottom: 20px; border-radius: 8px; }
+        .btn-save:hover { background: #00b5b0; }
+        .btn-save:disabled { background: #777; cursor: not-allowed; }
+
         input, select, button { padding: 10px; margin: 5px; border-radius: 5px; border: none; }
         input { background: #444; color: white; border: 1px solid #555; }
+        
         .group-box { background: #333; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #444; }
         .member-row { background: #444; padding: 8px 10px; margin-top: 5px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #555; }
         .badge { padding: 3px 6px; border-radius: 3px; font-size: 0.8rem; margin-right: 5px; color: #000; font-weight: bold; }
@@ -15,9 +21,13 @@
     </style>
 </head>
 <body>
-    <h2 style="text-align:center">🛠️ UI 배치 관리 (ID만 입력)</h2>
-    
-    <button onclick="saveAndSync()" class="btn-save" id="saveBtn">💾 배치 저장 + DB 동기화</button>
+
+    <h2 style="text-align:center">🛠️ UI 배치 관리자</h2>
+    <div style="text-align:center; margin-bottom:20px">
+        <a href="index.html" style="color:#aaa; text-decoration:none;">🏠 메인 화면 확인하기</a>
+    </div>
+
+    <button onclick="saveAndSync()" class="btn-save" id="saveBtn">💾 배치 저장하기 (DB 자동 동기화)</button>
 
     <div style="text-align:center; background:#111; padding:15px; margin-bottom:20px; border-radius:10px;">
         <input type="text" id="gName" placeholder="새 그룹 이름">
@@ -25,8 +35,8 @@
         <hr style="border-color:#333; margin:15px 0;">
         
         <select id="pf">
-            <option value="soop">🌲 숲</option>
-            <option value="chzzk">⚡ 치지직</option>
+            <option value="soop">🌲 숲 (SOOP)</option>
+            <option value="chzzk">⚡ 치지직 (CHZZK)</option>
         </select>
         <input type="text" id="mId" placeholder="아이디 (UID)">
         <select id="targetG"></select>
@@ -36,80 +46,94 @@
     <div id="preview"></div>
 
 <script>
-    // 🔥 본인 Supabase 주소 확인
+    // 🔥 [필수 수정] 본인의 Supabase 프로젝트 주소를 입력하세요!
     const SUPABASE_URL = "https://fnasnyvtbifgpmxplkkd.supabase.co"; 
+    
+    // 파일 경로 (Storage -> configs -> list.json)
     const LIST_URL = `${SUPABASE_URL}/storage/v1/object/public/configs/list.json`;
     
     let uiData = { groups: [] };
 
+    // 1. 시작하면 현재 저장된 list.json 파일을 불러옵니다.
     async function init() {
         try {
             const res = await fetch(LIST_URL + '?t=' + Date.now());
-            if(res.ok) uiData = await res.json();
-            render();
-        } catch(e) {}
+            if(res.ok) {
+                uiData = await res.json();
+                render();
+            }
+        } catch(e) { console.log("기존 설정 파일이 없습니다. 새로 만듭니다."); }
     }
 
+    // 2. [저장] 버튼 클릭 시 동작
     async function saveAndSync() {
         const btn = document.getElementById('saveBtn');
-        btn.innerText = "⏳ 저장 및 DB 수집 요청 중...";
+        const originalText = btn.innerText;
+        btn.innerText = "⏳ 저장 및 DB 수집 중...";
         btn.disabled = true;
 
         try {
-            // 1. 배치 파일(list.json) 저장 (ID랑 그룹정보만 있음)
+            // [단계 A] list.json 파일로 저장 (UI 배치 저장)
             await fetch('/api/save_list', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(uiData)
             });
 
-            // 2. DB 동기화 요청 (ID 던져주면 서버가 닉네임/프사 긁어옴)
+            // [단계 B] DB 동기화 요청 (ID 목록을 던져서 닉네임/프사 수집 시킴)
             let allMembers = [];
             uiData.groups.forEach(g => allMembers.push(...g.members));
             
             await fetch('/api/sync', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ items: allMembers })
             });
 
-            alert("✅ 완료!\n배치도가 저장되었고, DB가 최신 정보를 수집하고 있습니다.");
+            alert("✅ 저장 완료!\n1. 화면 배치가 저장되었습니다.\n2. DB가 최신 프로필 정보를 수집했습니다.");
+
         } catch(e) { 
-            alert("에러: " + e.message); 
+            alert("❌ 에러 발생: " + e.message); 
         } finally {
-            btn.innerText = "💾 배치 저장 + DB 동기화";
+            btn.innerText = originalText;
             btn.disabled = false;
         }
     }
 
+    // --- 화면 그리기 (렌더링) ---
     function render() {
         const div = document.getElementById('preview');
         const sel = document.getElementById('targetG');
         div.innerHTML = ''; sel.innerHTML = '';
 
         uiData.groups.forEach((g, i) => {
+            // 그룹 선택 박스 업데이트
             sel.innerHTML += `<option value="${i}">${g.name}</option>`;
             
+            // 멤버 리스트 HTML 생성
             let mHtml = g.members.map((m, mi) => 
                 `<div class="member-row">
                     <span>
                         <span class="badge ${m.platform}">${m.platform==='chzzk'?'C':'S'}</span>
-                        ${m.id}
+                        <b>${m.id}</b>
                     </span>
-                    <button onclick="delMem(${i},${mi})" style="background:#ff7675; color:white; font-size:0.8rem">X</button>
+                    <button onclick="delMem(${i},${mi})" style="background:#ff7675; color:white; font-size:0.8rem; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">X</button>
                 </div>`
             ).join('');
             
+            // 그룹 박스 HTML 생성
             div.innerHTML += `
                 <div class="group-box">
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
                         <h3 style="margin:0">${g.name}</h3>
-                        <button onclick="delGrp(${i})" style="background:#d63031; color:white; font-size:0.8rem">그룹삭제</button>
+                        <button onclick="delGrp(${i})" style="background:#d63031; color:white; font-size:0.8rem; border:none; padding:5px; border-radius:4px; cursor:pointer;">그룹삭제</button>
                     </div>
                     ${mHtml}
                 </div>`;
         });
     }
 
+    // --- 데이터 조작 (메모리 상에서만 수정) ---
     function addGroup() { 
         const n = document.getElementById('gName').value;
         if(!n) return;
@@ -121,7 +145,7 @@
         const id = document.getElementById('mId').value;
         if(!id) return alert("아이디를 입력하세요");
         
-        // 닉네임 저장 안 함. ID랑 플랫폼만 저장.
+        // 닉네임 입력칸 없음! ID랑 플랫폼만 저장함.
         uiData.groups[document.getElementById('targetG').value].members.push({
             id: id,
             platform: document.getElementById('pf').value
