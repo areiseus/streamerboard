@@ -14,7 +14,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: '데이터 없음' });
     }
 
-    // 1. admin.json에서 형님이 저장한 쿠키 변수 가져오기
+    // 1. admin.json에서 쿠키 가져오기
     let soopCookieVal = '';
     let chzzkCookieVal = '';
     
@@ -23,13 +23,11 @@ export default async function handler(req, res) {
         if (fs.existsSync(filePath)) {
             const fileData = fs.readFileSync(filePath, 'utf8');
             const json = JSON.parse(fileData);
-            
-            // 형님이 admin.json에 적은 변수명 그대로 읽어옴
             soopCookieVal = json.img_soop_cookie || '';
             chzzkCookieVal = json.img_chzzk_cookie || '';
         }
     } catch (err) {
-        console.error('admin.json 읽기 실패:', err);
+        console.error('admin.json 읽기 에러 (쿠키 건너뜀)');
     }
 
     try {
@@ -47,43 +45,63 @@ export default async function handler(req, res) {
             };
 
             // 기본 헤더
-            let headers = {
+            let commonHeaders = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
                 'Accept': 'application/json, text/plain, */*'
             };
 
             try {
-                // [SOOP / 아프리카]
+                // ===============================================
+                // [1] SOOP (아프리카) - 2중 안전장치 적용
+                // ===============================================
                 if (item.platform === 'soop') {
-                    // 아프리카 쿠키 적용
-                    if (soopCookieVal) headers['Cookie'] = soopCookieVal;
-                    headers['Referer'] = `https://bj.afreecatv.com/${item.id}`;
+                    const apiUrl = `https://bjapi.afreecatv.com/api/${item.id}/station`;
+                    const referer = `https://bj.afreecatv.com/${item.id}`;
 
-                    const resp = await fetch(`https://bjapi.afreecatv.com/api/${item.id}/station`, { headers });
-                    
+                    // --- [시도 1] 쿠키 넣어서 요청 ---
+                    let headers1 = { ...commonHeaders, 'Referer': referer };
+                    if (soopCookieVal) headers1['Cookie'] = soopCookieVal;
+
+                    let resp = await fetch(apiUrl, { headers: headers1 });
+                    let success = false;
+                    let json = null;
+
                     if (resp.ok) {
-                        const json = await resp.json();
-                        if (json && json.station) {
-                            dbData.nickname = json.station.user_nick;
-                            
-                            // 방송 시간 (초 단위 저장)
-                            if (json.station.total_broad_time) {
-                                dbData.total_broadcast_time = json.station.total_broad_time;
-                            }
+                        json = await resp.json();
+                        // 이미지가 제대로 있는지 확인
+                        if (json?.station?.image_profile) success = true;
+                    }
 
-                            // 이미지 주소 (https 붙이기)
-                            let img = json.station.image_profile;
-                            if (img) {
-                                if (img.startsWith('//')) dbData.profile_img = 'https:' + img;
-                                else if (!img.startsWith('http')) dbData.profile_img = 'https://' + img;
-                                else dbData.profile_img = img;
-                            }
+                    // --- [시도 2] 실패 시, 쿠키 빼고 '순수 시청자 모드'로 재요청 ---
+                    if (!success) {
+                        console.log(`[SOOP 재시도] ${item.id} - 쿠키 빼고 재요청`);
+                        let headers2 = { ...commonHeaders, 'Referer': referer };
+                        // 쿠키 절대 넣지 않음
+                        resp = await fetch(apiUrl, { headers: headers2 });
+                        if (resp.ok) json = await resp.json();
+                    }
+
+                    // --- 데이터 저장 ---
+                    if (json && json.station) {
+                        dbData.nickname = json.station.user_nick;
+                        
+                        if (json.station.total_broad_time) {
+                            dbData.total_broadcast_time = json.station.total_broad_time;
+                        }
+
+                        let img = json.station.image_profile;
+                        if (img) {
+                            if (img.startsWith('//')) dbData.profile_img = 'https:' + img;
+                            else if (!img.startsWith('http')) dbData.profile_img = 'https://' + img;
+                            else dbData.profile_img = img;
                         }
                     }
                 } 
-                // [CHZZK / 치지직]
+                // ===============================================
+                // [2] CHZZK (치지직)
+                // ===============================================
                 else if (item.platform === 'chzzk') {
-                    // 치지직 쿠키 적용
+                    let headers = { ...commonHeaders };
                     if (chzzkCookieVal) headers['Cookie'] = chzzkCookieVal;
 
                     const resp = await fetch(`https://api.chzzk.naver.com/service/v1/channels/${item.id}`, { headers });
@@ -92,7 +110,6 @@ export default async function handler(req, res) {
                         const json = await resp.json();
                         if (json && json.content) {
                             dbData.nickname = json.content.channelName;
-                            // 치지직 이미지 저장
                             dbData.profile_img = json.content.channelImageUrl || null;
                             dbData.total_broadcast_time = null;
                         }
@@ -105,7 +122,7 @@ export default async function handler(req, res) {
             return dbData;
         }));
 
-        // DB 저장 (Upsert)
+        // DB 저장
         const { error } = await supabase.from('streamers').upsert(results);
         if (error) throw error;
 
