@@ -2,73 +2,81 @@ import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 
-// 1. Supabase 접속 설정
+// 🔥 선생님이 설정한 변수명 그대로 사용
 const supabase = createClient(
     process.env.streamer_db_URL,
     process.env.streamer_db_KEY
 );
 
 export default async function handler(req, res) {
-    // 관리자 키 체크 (보안) - 나중에 admin.html에서 보낼 예정
-    // const { adminKey } = req.body; 
+    // 이제 단순 ID가 아니라, 플랫폼 정보가 담긴 'items'를 받습니다.
+    const { items } = req.body; 
 
-    // 2. 관리 대상 스트리머 목록 가져오기 (list.json)
-    // 주의: 실제로는 DB의 streamers 테이블을 읽는 게 더 좋지만, 
-    // 지금은 초기 단계니 GitHub에 있는 list.json 구조를 기반으로 수집합니다.
-    const { ids } = req.body; 
-
-    if (!ids || !Array.isArray(ids)) {
-        return res.status(400).json({ error: 'ID 목록이 없습니다.' });
+    if (!items || !Array.isArray(items)) {
+        return res.status(400).json({ error: '목록이 올바르지 않습니다.' });
     }
 
     const results = [];
 
     try {
-        // 3. 한 명씩 순서대로 처리 (너무 빠르면 차단될 수 있으니 순차 처리 권장)
-        for (const id of ids) {
+        for (const item of items) {
+            // 옛날 데이터(문자열)면 'soop'으로 처리, 아니면 플랫폼 확인
+            const id = typeof item === 'string' ? item : item.id;
+            const platform = typeof item === 'string' ? 'soop' : (item.platform || 'soop');
+
+            let nickname = '';
+            let profileImg = '';
+
             try {
-                // A. 숲 방송국 접속
-                const url = `https://bj.afreecatv.com/${id}`;
-                const { data: html } = await axios.get(url, {
-                    headers: { 'User-Agent': 'Mozilla/5.0' }
-                });
-                const $ = cheerio.load(html);
+                // 🔀 갈림길: 플랫폼에 따라 다르게 행동
+                if (platform === 'chzzk') {
+                    // ⚡ 치지직 (네이버 API 사용)
+                    const url = `https://api.chzzk.naver.com/service/v1/channels/${id}`;
+                    const { data: json } = await axios.get(url);
+                    
+                    if (json.code !== 200) throw new Error('Chzzk API Error');
+                    
+                    nickname = json.content.channelName;
+                    profileImg = json.content.channelImageUrl;
 
-                // B. 데이터 추출
-                let nickname = $('meta[property="og:title"]').attr('content') || id;
-                nickname = nickname.replace(' | 아프리카TV', '').trim();
-                const profileImg = $('meta[property="og:image"]').attr('content');
-                
-                // 방송국 개설일 등은 메타태그에 없어서 생략하거나 추가 크롤링 필요
-                // 여기서는 기본 정보 업데이트만 수행
+                } else {
+                    // 🌲 숲 (크롤링 사용)
+                    const url = `https://bj.afreecatv.com/${id}`;
+                    const { data: html } = await axios.get(url, {
+                        headers: { 'User-Agent': 'Mozilla/5.0' }
+                    });
+                    const $ = cheerio.load(html);
 
-                // C. DB - streamers 테이블 업데이트 (Upsert)
+                    nickname = $('meta[property="og:title"]').attr('content') || id;
+                    nickname = nickname.replace(' | 아프리카TV', '').trim();
+                    profileImg = $('meta[property="og:image"]').attr('content');
+                }
+
+                // 💾 DB에 저장 (platform 정보 포함!)
                 const { error: streamerError } = await supabase
                     .from('streamers')
                     .upsert({ 
                         id: id, 
                         nickname: nickname, 
                         profile_img: profileImg,
+                        platform: platform, 
                         last_updated_at: new Date()
                     }, { onConflict: 'id' });
 
                 if (streamerError) throw streamerError;
 
-                // D. DB - daily_stats (일일 통계) 초기화
-                // 오늘 날짜로 빈 통계 row를 미리 만들어둡니다. (나중에 채우기 위해)
-                const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-                await supabase
-                    .from('daily_stats')
-                    .upsert({
-                        streamer_id: id,
-                        date: today
-                    }, { onConflict: 'streamer_id, date' }); // 중복이면 무시
+                // 통계 테이블 초기화 (오늘 날짜 칸 만들기)
+                const today = new Date().toISOString().split('T')[0];
+                await supabase.from('daily_stats').upsert({
+                    streamer_id: id,
+                    date: today
+                }, { onConflict: 'streamer_id, date' });
 
-                results.push({ id, status: 'success', name: nickname });
+                results.push({ id, status: 'success', name: nickname, platform });
 
             } catch (innerErr) {
-                console.error(`Error processing ${id}:`, innerErr);
-                results.push({ id, status: 'failed', error: innerErr.message });
+                console.error(`Error processing ${id} (${platform}):`, innerErr);
+                results.push({ id, status: 'failed', platform, error: innerErr.message });
             }
         }
 
