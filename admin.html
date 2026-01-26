@@ -2,120 +2,135 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Streamer Board</title>
+    <title>UI 배치 관리자</title>
     <style>
-        body { margin: 0; background: #F0F2F5; font-family: sans-serif; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        .group-title { font-size: 1.5rem; font-weight: bold; margin: 30px 0 15px; border-bottom: 2px solid #ddd; display:block; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
-        
-        .card { background: white; padding: 20px; border-radius: 15px; text-align: center; cursor: pointer; transition: 0.2s; border: 2px solid transparent; }
-        .card:hover { transform: translateY(-5px); }
-        .card.is-live { border-color: #ff4757; background: #fff0f0; }
-        
-        .profile-img { width: 80px; height: 80px; border-radius: 50%; background: #eee; object-fit: cover; margin-bottom: 10px; }
-        .badge { font-size: 0.8rem; padding: 2px 5px; border-radius: 4px; color: white; margin-right: 5px;}
-        .soop { background: #42C769; } .chzzk { background: #00E59D; color:#333; }
-        .status { color: #888; margin-top: 5px; font-size: 0.9rem; }
+        body { background: #222; color: #fff; padding: 20px; font-family: sans-serif; max-width: 800px; margin: 0 auto; }
+        .btn-save { width: 100%; background: #00cec9; font-weight: bold; font-size: 1.2rem; cursor: pointer; padding: 15px; border: none; margin-bottom: 20px; border-radius: 8px; }
+        input, select, button { padding: 10px; margin: 5px; border-radius: 5px; border: none; }
+        input { background: #444; color: white; border: 1px solid #555; }
+        .group-box { background: #333; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #444; }
+        .member-row { background: #444; padding: 8px 10px; margin-top: 5px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #555; }
+        .badge { padding: 3px 6px; border-radius: 3px; font-size: 0.8rem; margin-right: 5px; color: #000; font-weight: bold; }
+        .soop { background: #42C769; } .chzzk { background: #00E59D; }
     </style>
 </head>
 <body>
+    <h2 style="text-align:center">🛠️ UI 배치 관리 (ID만 입력)</h2>
+    
+    <button onclick="saveAndSync()" class="btn-save" id="saveBtn">💾 배치 저장 + DB 동기화</button>
 
-<div class="container">
-    <h1 style="text-align:center">Streamer Board</h1>
-    <a href="admin.html" style="position:absolute; top:20px; right:20px; text-decoration:none">⚙️</a>
-    <div id="board"><p style="text-align:center">로딩 중...</p></div>
-</div>
+    <div style="text-align:center; background:#111; padding:15px; margin-bottom:20px; border-radius:10px;">
+        <input type="text" id="gName" placeholder="새 그룹 이름">
+        <button onclick="addGroup()" style="background:#6c5ce7; color:white">그룹 생성</button>
+        <hr style="border-color:#333; margin:15px 0;">
+        
+        <select id="pf">
+            <option value="soop">🌲 숲</option>
+            <option value="chzzk">⚡ 치지직</option>
+        </select>
+        <input type="text" id="mId" placeholder="아이디 (UID)">
+        <select id="targetG"></select>
+        <button onclick="addMember()" style="background:#0984e3; color:white">멤버 추가</button>
+    </div>
+
+    <div id="preview"></div>
 
 <script>
-    // 🔥 본인 Supabase 주소 (https://...supabase.co)
+    // 🔥 본인 Supabase 주소 확인
     const SUPABASE_URL = "https://fnasnyvtbifgpmxplkkd.supabase.co"; 
     const LIST_URL = `${SUPABASE_URL}/storage/v1/object/public/configs/list.json`;
+    
+    let uiData = { groups: [] };
 
     async function init() {
         try {
-            // 1. [파일 로드] 그룹 배치도 가져오기 (ID만 있음)
-            const listRes = await fetch(LIST_URL + '?t=' + Date.now());
-            if(!listRes.ok) throw new Error("배치 파일 없음");
-            const uiData = await listRes.json();
+            const res = await fetch(LIST_URL + '?t=' + Date.now());
+            if(res.ok) uiData = await res.json();
+            render();
+        } catch(e) {}
+    }
 
-            // 2. [DB 로드] 상세 정보 가져오기 (닉네임, 프사)
-            const dbRes = await fetch('/api/get_list');
-            const dbData = await dbRes.json();
+    async function saveAndSync() {
+        const btn = document.getElementById('saveBtn');
+        btn.innerText = "⏳ 저장 및 DB 수집 요청 중...";
+        btn.disabled = true;
+
+        try {
+            // 1. 배치 파일(list.json) 저장 (ID랑 그룹정보만 있음)
+            await fetch('/api/save_list', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(uiData)
+            });
+
+            // 2. DB 동기화 요청 (ID 던져주면 서버가 닉네임/프사 긁어옴)
+            let allMembers = [];
+            uiData.groups.forEach(g => allMembers.push(...g.members));
             
-            // DB 데이터를 쓰기 좋게 맵(Map)으로 변환
-            const dbMap = {};
-            dbData.forEach(item => dbMap[item.id] = item);
+            await fetch('/api/sync', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ items: allMembers })
+            });
 
-            // 3. [합체] 배치도 + DB정보 렌더링
-            render(uiData.groups, dbMap);
-
-            // 4. [Live] 방송 확인
-            checkLive(uiData.groups);
-
-        } catch (e) {
-            console.error(e);
-            document.getElementById('board').innerHTML = '<p style="text-align:center">데이터 로딩 실패</p>';
+            alert("✅ 완료!\n배치도가 저장되었고, DB가 최신 정보를 수집하고 있습니다.");
+        } catch(e) { 
+            alert("에러: " + e.message); 
+        } finally {
+            btn.innerText = "💾 배치 저장 + DB 동기화";
+            btn.disabled = false;
         }
     }
 
-    function render(groups, dbMap) {
-        const board = document.getElementById('board');
-        board.innerHTML = '';
+    function render() {
+        const div = document.getElementById('preview');
+        const sel = document.getElementById('targetG');
+        div.innerHTML = ''; sel.innerHTML = '';
 
-        groups.forEach(g => {
-            const section = document.createElement('div');
-            section.innerHTML = `<span class="group-title">${g.name}</span><div class="grid"></div>`;
-            const grid = section.querySelector('.grid');
-
-            g.members.forEach(m => {
-                // 🔥 여기가 핵심: 파일에는 ID만 있지만, 닉네임/프사는 DB(dbMap)에서 꺼내 씁니다.
-                const info = dbMap[m.id] || {}; // DB 정보
-                const pf = m.platform || 'soop';
-                
-                // 닉네임: DB에 있으면 그거 쓰고, 정 없으면 ID라도 보여줌
-                const displayName = info.nickname || m.id;
-                // 프사: DB에 있으면 그거 쓰고, 없으면 기본이미지
-                const displayImg = info.profile_img || 'https://via.placeholder.com/80?text=Wait';
-
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.id = `card-${m.id}`;
-                card.onclick = () => window.open(pf === 'chzzk' ? `https://chzzk.naver.com/live/${m.id}` : `https://play.afreecatv.com/${m.id}`);
-
-                card.innerHTML = `
-                    <img src="${displayImg}" class="profile-img">
-                    <div><span class="badge ${pf}">${pf==='chzzk'?'C':'S'}</span></div>
-                    <h3 style="margin:10px 0 5px; font-size:1.1rem">${displayName}</h3>
-                    <p class="status">오프라인</p>
-                `;
-                grid.appendChild(card);
-            });
-            board.appendChild(section);
+        uiData.groups.forEach((g, i) => {
+            sel.innerHTML += `<option value="${i}">${g.name}</option>`;
+            
+            let mHtml = g.members.map((m, mi) => 
+                `<div class="member-row">
+                    <span>
+                        <span class="badge ${m.platform}">${m.platform==='chzzk'?'C':'S'}</span>
+                        ${m.id}
+                    </span>
+                    <button onclick="delMem(${i},${mi})" style="background:#ff7675; color:white; font-size:0.8rem">X</button>
+                </div>`
+            ).join('');
+            
+            div.innerHTML += `
+                <div class="group-box">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                        <h3 style="margin:0">${g.name}</h3>
+                        <button onclick="delGrp(${i})" style="background:#d63031; color:white; font-size:0.8rem">그룹삭제</button>
+                    </div>
+                    ${mHtml}
+                </div>`;
         });
     }
 
-    async function checkLive(groups) {
-        let items = [];
-        groups.forEach(g => items.push(...g.members));
+    function addGroup() { 
+        const n = document.getElementById('gName').value;
+        if(!n) return;
+        uiData.groups.push({ name: n, members: [] }); 
+        document.getElementById('gName').value=''; render(); 
+    }
+    
+    function addMember() { 
+        const id = document.getElementById('mId').value;
+        if(!id) return alert("아이디를 입력하세요");
         
-        const res = await fetch('/api/live', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ items })
-        });
-        const results = await res.json();
-
-        results.forEach(r => {
-            const card = document.getElementById(`card-${r.id}`);
-            if(card && r.isLive) {
-                card.classList.add('is-live');
-                card.querySelector('.status').innerHTML = `<span style="color:red;font-weight:bold">🔴 ${r.viewers}명</span>`;
-                // 썸네일로 교체 (선택사항)
-                if(r.img) card.querySelector('.profile-img').src = r.img;
-            }
-        });
+        // 닉네임 저장 안 함. ID랑 플랫폼만 저장.
+        uiData.groups[document.getElementById('targetG').value].members.push({
+            id: id,
+            platform: document.getElementById('pf').value
+        }); 
+        document.getElementById('mId').value = ''; render(); 
     }
+    
+    function delMem(g, m) { uiData.groups[g].members.splice(m, 1); render(); }
+    function delGrp(g) { uiData.groups.splice(g, 1); render(); }
 
     init();
 </script>
