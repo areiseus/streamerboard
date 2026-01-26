@@ -6,57 +6,81 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
-    // 1. 화면(admin.html)에서 보낸 데이터 받기
     const { items } = req.body; 
 
     if (!items || items.length === 0) {
-        return res.status(400).json({ error: '저장할 데이터가 없습니다.' });
+        return res.status(400).json({ error: '데이터 없음' });
     }
 
     try {
         const results = await Promise.all(items.map(async (item) => {
             
-            // ▼▼▼ 여기가 제일 중요합니다 ▼▼▼
-            // 화면에서 보낸 group_name을 DB에 그대로 넣습니다.
             let dbData = {
                 id: item.id,
                 platform: item.platform,
-                group_name: item.group_name, // (수동으로 바꾼 DB 컬럼명과 일치)
+                group_name: item.group_name,
                 is_active: true,
                 last_updated_at: new Date()
             };
 
-            // [상세 정보 수집: 닉네임, 프사, 방송국개설일]
+            // [상세 정보 수집]
             try {
-                // SOOP (숲)
+                // ===============================================
+                // 1. SOOP (숲/아프리카)
+                // ===============================================
                 if (item.platform === 'soop') {
-                    const resp = await fetch(`https://bjapi.afreecatv.com/api/${item.id}/station`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+                    const resp = await fetch(`https://bjapi.afreecatv.com/api/${item.id}/station`, { 
+                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } 
+                    });
                     const json = await resp.json();
+                    
                     if (json.station) {
                         dbData.nickname = json.station.user_nick;
-                        dbData.profile_img = 'https:' + json.station.image_profile;
-                        dbData.station_open_date = json.station.station_open_date;
+                        dbData.station_open_date = json.station.station_open_date || null;
+                        
+                        // [이미지 주소 처리 핵심 수정]
+                        let imgUrl = json.station.image_profile;
+                        if (imgUrl) {
+                            if (imgUrl.startsWith('//')) {
+                                dbData.profile_img = 'https:' + imgUrl;
+                            } else if (!imgUrl.startsWith('http')) {
+                                // 혹시라도 http가 아예 없으면 붙여줌
+                                dbData.profile_img = 'https://' + imgUrl;
+                            } else {
+                                // 이미 http나 https로 시작하면 그대로 씀
+                                dbData.profile_img = imgUrl;
+                            }
+                        }
                     }
                 } 
-                // CHZZK (치지직)
+                // ===============================================
+                // 2. CHZZK (치지직)
+                // ===============================================
                 else if (item.platform === 'chzzk') {
-                    const resp = await fetch(`https://api.chzzk.naver.com/service/v1/channels/${item.id}`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+                    const resp = await fetch(`https://api.chzzk.naver.com/service/v1/channels/${item.id}`, { 
+                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } 
+                    });
                     const json = await resp.json();
+                    
                     if (json.content) {
                         dbData.nickname = json.content.channelName;
-                        dbData.profile_img = json.content.channelImageUrl;
-                        dbData.station_open_date = json.content.openDate ? json.content.openDate.split(' ')[0] : null;
+                        dbData.profile_img = json.content.channelImageUrl || null;
+                        
+                        // 날짜 포맷 정리 (YYYY-MM-DD HH:mm:ss -> YYYY-MM-DD)
+                        if (json.content.openDate) {
+                            dbData.station_open_date = json.content.openDate.split(' ')[0];
+                        }
                     }
                 }
             } catch (err) {
-                console.error(`수집 실패 (${item.id})`, err);
-                // 실패해도 기본 정보(ID, 그룹명)는 저장합니다.
+                console.error(`[수집 실패] ${item.id}:`, err);
+                // 실패해도 기본 데이터는 남기기 위해 에러를 던지지 않음
             }
 
             return dbData;
         }));
 
-        // 3. 진짜 DB에 넣기
+        // DB Upsert
         const { data, error } = await supabase
             .from('streamers')
             .upsert(results)
