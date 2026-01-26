@@ -1,1 +1,15 @@
-
+{
+  "groups": [
+    {
+      "id": "g_main",
+      "name": "👑 메인 그룹",
+      "members": ["woowakgood", "inehine"]
+    },
+    {
+      "id": "g_game",
+      "name": "🎮 게임 멤버",
+      "members": ["lilpa", "cotton1217"]
+    }
+  ],
+  "ungrouped": ["gosegu2"]
+}
