@@ -2,134 +2,301 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>DB 관리자</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streamer Admin Pro</title>
     <style>
-        body { background: #222; color: #fff; padding: 20px; font-family: sans-serif; max-width: 900px; margin: 0 auto; }
-        button { cursor: pointer; border: none; border-radius: 5px; font-weight: bold; padding: 10px 15px; margin: 5px; }
-        input, select { padding: 10px; background: #444; border: 1px solid #555; color: white; border-radius: 5px; }
-        .list-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        .list-table th { background: #444; padding: 10px; text-align: left; }
-        .list-table td { border-bottom: 1px solid #555; padding: 10px; }
-        .badge { padding: 3px 6px; border-radius: 3px; font-size: 0.8rem; font-weight: bold; color:black; }
-        .soop { background: #42C769; } .chzzk { background: #00E59D; }
+        :root { --bg: #1e1e2e; --card: #2b2b3b; --text: #cdd6f4; --accent: #89b4fa; --danger: #f38ba8; --success: #a6e3a1; }
+        body { background: var(--bg); color: var(--text); font-family: 'Pretendard', sans-serif; margin: 0; padding: 20px; }
+        h2, h3 { border-bottom: 2px solid #444; padding-bottom: 10px; margin-top: 30px; }
+        
+        /* 레이아웃 */
+        .container { max-width: 1200px; margin: 0 auto; }
+        .grid-box { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+        .card { background: var(--card); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+
+        /* 입력 폼 */
+        input, select, button { padding: 10px; margin: 5px 0; border-radius: 6px; border: 1px solid #555; background: #333; color: white; width: 100%; box-sizing: border-box; }
+        button { cursor: pointer; font-weight: bold; border: none; transition: 0.2s; }
+        button.primary { background: var(--accent); color: #111; }
+        button.danger { background: var(--danger); color: #111; }
+        button.success { background: var(--success); color: #111; }
+        button:hover { opacity: 0.8; }
+
+        /* 테이블 */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
+        th, td { padding: 10px; text-align: center; border-bottom: 1px solid #444; }
+        th { background: #333; color: var(--accent); }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+        .soop { background: #42C769; color: #fff; } .chzzk { background: #00E59D; color: #111; }
+
+        /* 모달 (통계 팝업) */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 999; justify-content: center; align-items: center; }
+        .modal-content { background: var(--card); width: 80%; max-height: 90vh; overflow-y: auto; padding: 20px; border-radius: 15px; }
+        .close-btn { float: right; font-size: 1.5rem; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <h2 style="text-align:center">🛠️ 스트리머 DB 관리</h2>
-
-    <div style="background: #333; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 30px;">
-        <h3>➕ 스트리머 등록 / 그룹 수정</h3>
-        
-        <select id="pf">
-            <option value="soop">🌲 숲 (SOOP)</option>
-            <option value="chzzk">⚡ 치지직 (CHZZK)</option>
-        </select>
-        <input type="text" id="mId" placeholder="스트리머 ID (UID)">
-        
-        <input type="text" id="gName" placeholder="그룹명 (예: 왁타버스)" list="groupList">
-        <datalist id="groupList"></datalist>
-
-        <button onclick="saveStreamer()" style="background:#0984e3; color:white">💾 저장 (DB등록 + 정보수집)</button>
+<div class="container">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2>🛠️ 통합 관리자 대시보드</h2>
+        <div>
+            <button onclick="openStats()" class="primary" style="width:auto; padding:10px 20px;">📊 월간/주간 통계 분석</button>
+            <a href="index.html"><button style="width:auto; background:#555;">🏠 메인으로</button></a>
+        </div>
     </div>
 
-    <h3>📋 등록된 목록 (<span id="totalCnt">0</span>명)</h3>
-    <button onclick="updateAll()" style="background:#e17055; color:white;">⚡ 전체 정보 갱신 (오래 걸림)</button>
-    
-    <table class="list-table">
-        <thead>
-            <tr>
-                <th>그룹</th>
-                <th>플랫폼</th>
-                <th>ID</th>
-                <th>닉네임</th>
-                <th>삭제</th>
-            </tr>
-        </thead>
-        <tbody id="listBody"></tbody>
-    </table>
+    <div class="grid-box">
+        <div class="card">
+            <h3>📂 그룹 관리</h3>
+            <input type="text" id="newGroupName" placeholder="새 그룹명 (예: 왁타버스)">
+            <button onclick="addGroup()" class="success">➕ 그룹 생성</button>
+            <div id="groupListArea" style="margin-top:20px;">
+                </div>
+        </div>
+
+        <div class="card">
+            <h3>👤 스트리머 등록 (최초 1회)</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px;">
+                <select id="regPlatform">
+                    <option value="soop">SOOP (숲)</option>
+                    <option value="chzzk">CHZZK (치지직)</option>
+                </select>
+                <input type="text" id="regId" placeholder="스트리머 ID/UID">
+                <select id="regGroup">
+                    <option value="">그룹 선택</option>
+                </select>
+                <button onclick="registerStreamer()" class="primary">💾 등록 및 정보수집</button>
+            </div>
+            <p style="font-size:0.8rem; color:#aaa;">* 최초 등록 시: 방송국 개설일, 프로필 사진, 기본 정보를 즉시 긁어옵니다.</p>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>📋 관리 목록 (총 <span id="totalCount">0</span>명)</h3>
+            <div>
+                <button onclick="updateLiveStatus()" style="background:#f1c40f; color:black; width:auto;">⚡ 실시간(Live) 갱신</button>
+                <button onclick="updateAllData()" class="danger" style="width:auto;">🔄 [모두 갱신] 어제 데이터/방송기록</button>
+            </div>
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>그룹</th>
+                    <th>플랫폼</th>
+                    <th>닉네임 (ID)</th>
+                    <th>방송국 개설일</th>
+                    <th>최근 방송</th>
+                    <th>어제 통계 (최대/평균)</th>
+                    <th>관리</th>
+                </tr>
+            </thead>
+            <tbody id="streamerTable"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="statsModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeStats()">&times;</span>
+        <h3>📈 방송 통계 분석 (후처리 데이터)</h3>
+        <div style="margin-bottom:15px;">
+            <button onclick="calculateStats('weekly')" style="width:auto;">이번 주 요약</button>
+            <button onclick="calculateStats('monthly')" style="width:auto;">이번 달 요약</button>
+        </div>
+        <div id="statsResult">
+            <p>분석할 데이터를 선택해주세요.</p>
+        </div>
+    </div>
+</div>
 
 <script>
-    let currentList = [];
+    // --- [1] 데이터 관리 변수 ---
+    let groups = [];
+    let streamers = [];
+    let historyData = []; // 방송 기록 (Mockup for UI)
 
-    // 1. 목록 불러오기 (api/get_list.js 사용)
-    async function loadList() {
-        const res = await fetch('/api/get_list'); 
-        const data = await res.json();
-        currentList = data;
-        
-        const tbody = document.getElementById('listBody');
-        const dlist = document.getElementById('groupList');
-        document.getElementById('totalCnt').innerText = data.length;
-        tbody.innerHTML = '';
-        dlist.innerHTML = '';
+    // --- [2] 초기 로딩 ---
+    window.onload = async function() {
+        await loadGroups();
+        await loadStreamers();
+    };
 
-        // 그룹명 자동완성 리스트 생성
-        const groups = [...new Set(data.map(d => d.group_name).filter(Boolean))];
-        groups.forEach(g => dlist.innerHTML += `<option value="${g}">`);
+    // --- [3] 그룹 관리 로직 ---
+    async function loadGroups() {
+        // API 연동 시: const res = await fetch('/api/groups'); groups = await res.json();
+        // 임시 데이터 (백엔드 없을 때 테스트용)
+        if(groups.length === 0) groups = ['왁타버스', '기타']; 
+        renderGroups();
+        updateGroupSelect();
+    }
 
-        // 그룹별 정렬
-        data.sort((a,b) => (a.group_name || 'zz').localeCompare(b.group_name || 'zz'));
+    async function addGroup() {
+        const name = document.getElementById('newGroupName').value;
+        if(!name) return alert('그룹명을 입력하세요.');
+        if(groups.includes(name)) return alert('이미 존재하는 그룹입니다.');
 
-        data.forEach(m => {
-            const pfClass = m.platform === 'chzzk' ? 'chzzk' : 'soop';
-            tbody.innerHTML += `
+        groups.push(name);
+        // TODO: await fetch('/api/groups', { method: 'POST', body: ... })
+        document.getElementById('newGroupName').value = '';
+        renderGroups();
+        updateGroupSelect();
+    }
+
+    function deleteGroup(name) {
+        if(!confirm(`'${name}' 그룹을 삭제합니까? 소속된 스트리머는 미분류 처리됩니다.`)) return;
+        groups = groups.filter(g => g !== name);
+        // TODO: API 호출
+        renderGroups();
+        updateGroupSelect();
+    }
+
+    function renderGroups() {
+        const area = document.getElementById('groupListArea');
+        area.innerHTML = groups.map(g => `
+            <div style="display:flex; justify-content:space-between; border-bottom:1px solid #444; padding:5px;">
+                <span>📂 ${g}</span>
+                <button onclick="deleteGroup('${g}')" style="width:auto; padding:2px 8px; font-size:0.8rem; background:#444;">❌</button>
+            </div>
+        `).join('');
+    }
+
+    function updateGroupSelect() {
+        const sel = document.getElementById('regGroup');
+        sel.innerHTML = '<option value="">그룹 선택</option>';
+        groups.forEach(g => sel.innerHTML += `<option value="${g}">${g}</option>`);
+    }
+
+    // --- [4] 스트리머 관리 로직 ---
+    async function loadStreamers() {
+        try {
+            const res = await fetch('/api/get_list');
+            streamers = await res.json();
+            document.getElementById('totalCount').innerText = streamers.length;
+            renderStreamerTable();
+        } catch(e) { console.error("로드 실패", e); }
+    }
+
+    async function registerStreamer() {
+        const platform = document.getElementById('regPlatform').value;
+        const id = document.getElementById('regId').value;
+        const group = document.getElementById('regGroup').value;
+
+        if(!id || !group) return alert("ID와 그룹을 모두 선택해주세요.");
+
+        // [최초 등록] API 호출 -> 백엔드에서 방송국 개설일, 프사 등 긁어옴
+        try {
+            await fetch('/api/register', { // sync 대신 register 사용 권장
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ id, platform, group_name: group })
+            });
+            alert(`✅ ${id} 등록 완료! 기본 정보를 수집했습니다.`);
+            loadStreamers();
+        } catch(e) { alert("등록 실패"); }
+    }
+
+    function renderStreamerTable() {
+        const tbody = document.getElementById('streamerTable');
+        tbody.innerHTML = streamers.map(s => {
+            // 데이터가 없으면 '-' 표시
+            const openDate = s.open_date || '-'; 
+            const lastCast = s.last_broadcast_date || '-';
+            const yesterdayMax = s.stats_yesterday?.max_viewers || '-';
+            const yesterdayAvg = s.stats_yesterday?.avg_viewers || '-';
+
+            return `
                 <tr>
-                    <td style="color:#fdcb6e; font-weight:bold">${m.group_name || '미분류'}</td>
-                    <td><span class="badge ${pfClass}">${m.platform}</span></td>
-                    <td>${m.id}</td>
-                    <td>${m.nickname || '-'}</td>
-                    <td><button onclick="alert('DB 삭제 API 필요')" style="background:#d63031; color:white; font-size:0.8rem;">삭제</button></td>
+                    <td>${s.group_name}</td>
+                    <td><span class="badge ${s.platform}">${s.platform}</span></td>
+                    <td>
+                        <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
+                            <img src="${s.profile_img || ''}" style="width:20px; height:20px; border-radius:50%;">
+                            ${s.nickname || s.id}
+                        </div>
+                    </td>
+                    <td style="font-size:0.8rem; color:#aaa;">${openDate}</td>
+                    <td>${lastCast}</td>
+                    <td>🔺${yesterdayMax} / ➖${yesterdayAvg}</td>
+                    <td>
+                        <button onclick="deleteStreamer('${s.id}')" style="background:#444; font-size:0.8rem; padding:4px 8px;">삭제</button>
+                    </td>
                 </tr>
             `;
-        });
+        }).join('');
     }
 
-    // 2. 저장/수정 (api/sync.js 사용)
-    async function saveStreamer() {
-        const id = document.getElementById('mId').value;
-        const pf = document.getElementById('pf').value;
-        const group = document.getElementById('gName').value;
-
-        if(!id || !group) return alert("아이디와 그룹명을 입력하세요.");
-
-        const btn = document.querySelector('button[onclick="saveStreamer()"]');
-        btn.innerText = "⏳ 저장 중...";
-        
-        // sync API에 '그룹명'까지 담아서 보냄 -> DB에 그룹명 저장됨 + 크롤링 실행됨
-        await fetch('/api/sync', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ items: [{ id, platform: pf, group_name: group }] })
-        });
-
-        alert("✅ 저장 완료!");
-        document.getElementById('mId').value = '';
-        btn.innerText = "💾 저장 (DB등록 + 정보수집)";
-        loadList();
+    async function deleteStreamer(id) {
+        if(!confirm("정말 삭제하시겠습니까?")) return;
+        // await fetch('/api/delete', ... )
+        alert('삭제 기능은 API 구현이 필요합니다.'); 
     }
 
-    // 3. 전체 갱신 (api/sync.js 재활용)
-    async function updateAll() {
-        if(!confirm("모든 스트리머의 정보를 새로 긁어옵니까?")) return;
-        
-        // 현재 목록에 있는 ID들만 추려서 보냄 (그룹명은 유지해야 하니 같이 보냄)
-        const items = currentList.map(m => ({ 
-            id: m.id, 
-            platform: m.platform, 
-            group_name: m.group_name // 이거 안 보내면 그룹명 날아갈 수도 있으니 주의 
-        }));
+    // --- [5] 갱신 로직 (핵심) ---
 
-        await fetch('/api/sync', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ items })
-        });
-        
-        alert("✅ 전체 갱신 완료");
-        loadList();
+    // 1. 실시간 갱신 (가벼움)
+    async function updateLiveStatus() {
+        alert("⚡ 실시간 방송 여부와 현재 시청자 수만 빠르게 확인합니다.");
+        // await fetch('/api/live_check_only'); 
+        location.reload();
     }
 
-    loadList();
+    // 2. 모두 갱신 (무거움 - 매일 1회 권장)
+    async function updateAllData() {
+        if(!confirm("⚠️ 시간이 오래 걸립니다.\n\n[갱신 항목]\n- 어제 방송 기록(시간, 시청자수)\n- 게시글/클립 수\n- 누락된 기본 정보\n\n진행하시겠습니까?")) return;
+        
+        try {
+            const btn = document.querySelector('button[onclick="updateAllData()"]');
+            btn.innerText = "⏳ 데이터 수집 중... (페이지 닫지 마세요)";
+            
+            // 전체 스트리머 ID 전송
+            const targets = streamers.map(s => ({ id: s.id, platform: s.platform }));
+            
+            await fetch('/api/sync_full', { // 전체 갱신 전용 API
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ items: targets })
+            });
+
+            alert("✅ 모든 데이터 갱신 완료!");
+            location.reload();
+        } catch(e) {
+            alert("갱신 중 오류 발생");
+            console.error(e);
+        }
+    }
+
+    // --- [6] 통계 / 후처리 (팝업) ---
+    function openStats() { document.getElementById('statsModal').style.display = 'flex'; }
+    function closeStats() { document.getElementById('statsModal').style.display = 'none'; }
+
+    async function calculateStats(period) {
+        const resDiv = document.getElementById('statsResult');
+        resDiv.innerHTML = "⏳ 데이터 분석 및 계산 중...";
+
+        // 여기서 백엔드의 '후처리 API'를 호출해야 함
+        // const res = await fetch(`/api/analyze?period=${period}`);
+        // const data = await res.json();
+
+        // [화면 예시]
+        setTimeout(() => {
+            resDiv.innerHTML = `
+                <table style="width:100%">
+                    <thead>
+                        <tr><th>그룹</th><th>방송 횟수</th><th>총 방송시간</th><th>평균 시청자</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>왁타버스</td><td>15회</td><td>45시간</td><td>12,500명</td></tr>
+                        <tr><td>기타</td><td>5회</td><td>10시간</td><td>2,300명</td></tr>
+                    </tbody>
+                </table>
+                <p style="margin-top:10px; color:#aaa;">* 기간: ${period === 'weekly' ? '이번 주' : '이번 달'}</p>
+            `;
+        }, 500);
+    }
+
 </script>
 </body>
 </html>
