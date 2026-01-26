@@ -4,35 +4,45 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Streamer Board</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --primary: #42C769; --bg: #F0F2F5; --card: #ffffff; --text: #2f3542; }
         body { margin: 0; background: var(--bg); font-family: 'Pretendard', -apple-system, sans-serif; color: var(--text); }
         
-        .container { max-width: 1000px; margin: 0 auto; padding: 40px 20px; }
+        .container { max-width: 1000px; margin: 0 auto; padding: 40px 20px; position: relative; }
+        
+        /* 헤더 스타일 */
         header { text-align: center; margin-bottom: 30px; position: relative; }
         header h1 { color: #333; margin: 0; font-size: 2.5rem; letter-spacing: -1px; }
         
-        .admin-btn { position: absolute; top: 0; right: 0; background: white; border: 1px solid #ddd; padding: 6px 12px; border-radius: 20px; cursor: pointer; color: #666; font-size: 0.8rem; font-weight: bold; transition: 0.2s; }
-        .admin-btn:hover { background: #333; color: white; border-color: #333; }
-        
-        /* 관리자 패널 */
-        #admin-panel { display: none; background: white; padding: 20px; border-radius: 15px; margin-bottom: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); border: 2px solid var(--primary); }
-        .admin-row { display: flex; gap: 10px; justify-content: center; margin-bottom: 10px; align-items: center; flex-wrap: wrap; }
-        input, select { padding: 10px; border: 1px solid #ddd; border-radius: 8px; }
-        button.action-btn { background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        button.action-btn.secondary { background: #666; }
-        
-        /* 그룹 섹션 스타일 */
+        /* 🔥 관리자 버튼 (우측 상단 고정) */
+        .admin-link-btn {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #666;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .admin-link-btn:hover { background: #333; color: white; border-color: #333; }
+
         .group-section { margin-bottom: 40px; }
         .group-header { display: flex; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
         .group-title { font-size: 1.4rem; font-weight: bold; color: #333; margin-right: 15px; }
-        .group-controls { display: none; gap: 5px; } /* 관리자일 때만 보임 */
-        .group-controls button { font-size: 0.8rem; padding: 3px 8px; cursor: pointer; border-radius: 4px; border: 1px solid #ccc; background: #fff; }
-
+        
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
         
-        /* 카드 스타일 */
+        /* 로딩 애니메이션 */
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .card.loading { animation: pulse 1.5s infinite; }
+
         .card { 
             position: relative; background: var(--card); border-radius: 20px; padding: 25px 15px; text-align: center; 
             cursor: pointer; transition: all 0.3s ease; border: 1px solid transparent; box-shadow: 0 5px 15px rgba(0,0,0,0.05);
@@ -40,12 +50,6 @@
         .card:hover { transform: translateY(-5px); border-color: var(--primary); }
         .card.is-live { border-color: #ff4757; background: #fff5f5; }
         
-        .delete-btn {
-            display: none; position: absolute; top: 10px; right: 10px;
-            width: 24px; height: 24px; background: #ff4757; color: white;
-            border-radius: 50%; text-align: center; line-height: 22px; cursor: pointer; z-index: 10;
-        }
-
         .profile-wrapper { position: relative; width: 90px; height: 90px; margin: 0 auto 15px; }
         .card img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid #eee; background: #eee;}
         .card.is-live img { border-color: #ff4757; box-shadow: 0 0 10px rgba(255, 71, 87, 0.5); }
@@ -54,20 +58,14 @@
         .badge { padding: 4px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; color: white; }
         .badge.live { background: #ff4757; display: none; }
         .card.is-live .badge.live { display: inline-block; }
-        .badge.multi { background: #5f27cd; display: none; } /* 교집합 뱃지 */
+        
+        /* 플랫폼 뱃지 */
+        .badge.platform { background: #333; display: inline-block; }
+        .badge.soop { background: #42C769; }
+        .badge.chzzk { background: #00E59D; color: #1e1e1e; }
         
         .status-text { font-size: 0.85rem; color: #888; margin-top: 5px;}
         .card.is-live .status-text { color: #ff4757; font-weight: bold; }
-
-        /* 모달 */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; backdrop-filter: blur(3px); }
-        .modal-content { background: white; margin: 5vh auto; padding: 30px; width: 90%; max-width: 600px; border-radius: 20px; max-height: 90vh; overflow-y: auto; }
-        .close-btn { float: right; font-size: 2rem; cursor: pointer; color: #999; }
-        
-        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 20px; }
-        .cal-day { aspect-ratio: 1; border: 1px solid #f0f0f0; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 0.9rem; }
-        .cal-day.has-vod { background-color: #e3fcf0; border-color: var(--primary); color: var(--primary); font-weight: bold; }
-        .chart-box { margin-top: 30px; height: 250px; }
     </style>
 </head>
 <body>
@@ -75,310 +73,21 @@
 <div class="container">
     <header>
         <h1>Streamer Board</h1>
-        <p>실시간 방송 현황 (그룹 관리 ver)</p>
-        <button class="admin-btn" onclick="toggleAdmin()">⚙️ 설정</button>
+        <p>실시간 방송 현황</p>
+        <button class="admin-link-btn" onclick="location.href='admin.html'">⚙️ 관리자</button>
     </header>
 
-    <div id="admin-panel">
-        <div class="admin-row">
-            <h3>📂 그룹 관리</h3>
-            <input type="text" id="new-group-name" placeholder="새 그룹 이름">
-            <button class="action-btn" onclick="addNewGroup()">그룹 생성</button>
-        </div>
-        <hr style="margin: 15px 0; border: 0; border-top: 1px dashed #ddd;">
-        <div class="admin-row">
-            <h3>➕ 스트리머 추가</h3>
-            <input type="text" id="new-streamer-id" placeholder="BJ 아이디 (예: woowakgood)">
-            <select id="group-select">
-                </select>
-            <button class="action-btn" onclick="addStreamer()">추가</button>
-        </div>
-        <p style="font-size:0.8rem; color:#888; text-align: center;">* 여러 그룹에 같은 사람을 추가하면 '교집합'으로 표시됩니다.</p>
-    </div>
-
-    <div id="dashboard-content"></div>
-</div>
-
-<div id="modal" class="modal">
-    <div class="modal-content">
-        <span class="close-btn" onclick="closeModal()">&times;</span>
-        <h2 id="modal-title">방송 기록</h2>
-        <div class="calendar" id="calendar-grid"></div>
-        <div class="chart-box"><canvas id="timeChart"></canvas></div>
+    <div id="dashboard-content">
+        <p style="text-align:center; padding:50px; color:#666;">데이터를 불러오는 중입니다...</p>
     </div>
 </div>
 
 <script>
-    const ADMIN_PASSWORD = "1234"; // 🔐 관리자 비밀번호
-    let isAdmin = false;
-    let dashboardData = {
-        groups: [
-            { id: 'g_main', name: '👑 메인 그룹', members: [] },
-            { id: 'g_game', name: '🎮 게임 멤버', members: [] }
-        ],
-        ungrouped: ['bluejin0129', 'moonightwmn'] // 기본 멤버
-    };
+    let dashboardData = { groups: [], ungrouped: [] };
 
-    // 1. 데이터 불러오기 (초기화)
-    function init() {
-        const saved = localStorage.getItem('myStreamerData');
-        if (saved) {
-            dashboardData = JSON.parse(saved);
-        }
-        renderDashboard();
-    }
-
-    // 2. 데이터 저장
-    function saveData() {
-        localStorage.setItem('myStreamerData', JSON.stringify(dashboardData));
-        renderDashboard();
-    }
-
-    // 3. 전체 화면 그리기 (핵심 로직)
-    function renderDashboard() {
-        const container = document.getElementById('dashboard-content');
-        container.innerHTML = ''; // 싹 비우기
-        
-        // 3-1. 그룹 렌더링
-        dashboardData.groups.forEach((group, index) => {
-            const section = createGroupSection(group, index);
-            container.appendChild(section);
-        });
-
-        // 3-2. 그룹 없는 리스트 (맨 아래)
-        if (dashboardData.ungrouped.length > 0) {
-            const ungroupedSection = createGroupSection({ id: 'g_ungrouped', name: '기타 (미분류)', members: dashboardData.ungrouped }, -1);
-            container.appendChild(ungroupedSection);
-        }
-
-        // 3-3. 관리자 모드 UI 갱신
-        updateAdminUI();
-    }
-
-    // 그룹 섹션 HTML 생성
-    function createGroupSection(group, index) {
-        const section = document.createElement('div');
-        section.className = 'group-section';
-        
-        // 컨트롤 버튼 (위, 아래, 삭제)
-        let controls = '';
-        if (index !== -1) { // 미분류 그룹이 아니면
-            controls = `
-                <div class="group-controls" style="display:${isAdmin ? 'flex' : 'none'}">
-                    <button onclick="moveGroup(${index}, -1)">▲</button>
-                    <button onclick="moveGroup(${index}, 1)">▼</button>
-                    <button onclick="deleteGroup(${index})" style="color:red;">삭제</button>
-                </div>
-            `;
-        }
-
-        section.innerHTML = `
-            <div class="group-header">
-                <span class="group-title">${group.name}</span>
-                ${controls}
-            </div>
-            <div class="grid" id="grid-${group.id}"></div>
-        `;
-
-        // 멤버 카드 채우기
-        const grid = section.querySelector('.grid');
-        if (group.members.length === 0) {
-            grid.innerHTML = '<p style="color:#aaa; font-size:0.9rem;">멤버가 없습니다.</p>';
-        } else {
-            group.members.forEach(memberId => {
-                // 카드 생성 및 데이터 요청
-                const card = createCardElement(memberId, group.id);
-                grid.appendChild(card);
-                fetchStreamerData(memberId, card);
-            });
-        }
-        return section;
-    }
-
-    // 카드 요소 만들기
-    function createCardElement(id, groupId) {
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.id = `card-${groupId}-${id}`; // ID 중복 방지 (그룹별로 구분)
-        
-        // 삭제 버튼 (해당 그룹에서만 삭제)
-        const delBtn = document.createElement('div');
-        delBtn.className = 'delete-btn';
-        delBtn.innerText = 'X';
-        delBtn.style.display = isAdmin ? 'block' : 'none';
-        delBtn.onclick = (e) => {
-            e.stopPropagation();
-            removeMember(id, groupId);
-        };
-
-        card.innerHTML = `
-            <div class="profile-wrapper">
-                <img src="" onerror="this.src='https://via.placeholder.com/90?text=Wait'">
-                <div class="badges">
-                    <span class="badge live">LIVE</span>
-                    <span class="badge multi" id="multi-${groupId}-${id}">🔗</span>
-                </div>
-            </div>
-            <h3>${id}</h3>
-            <p class="status-text">로딩중...</p>
-        `;
-        card.prepend(delBtn);
-        card.onclick = (e) => { if(!e.target.classList.contains('delete-btn')) openModal(id); };
-
-        // 교집합(멀티 그룹) 체크
-        checkMultiGroup(id, groupId);
-        
-        return card;
-    }
-
-    // 데이터 가져오기 (엔진 호출)
-    async function fetchStreamerData(id, card) {
+    // 1. 초기화: list.json 읽기
+    async function init() {
         try {
-            const res = await fetch(`/api/info?id=${id}`);
-            const data = await res.json();
-            
-            if (data.isLive) card.classList.add('is-live');
-            
-            const img = card.querySelector('img');
-            img.src = data.img || 'https://via.placeholder.com/90';
-            
-            const name = card.querySelector('h3');
-            name.innerText = data.name;
-
-            const status = card.querySelector('.status-text');
-            status.innerText = data.isLive ? '🔴 방송중' : '⚫ 오프라인';
-
-        } catch (err) {
-            console.error(err);
-        }
-    }
-
-    // 🔗 교집합 확인 로직
-    function checkMultiGroup(id, currentGroupId) {
-        let count = 0;
-        // 전체 그룹을 뒤져서 이 사람이 몇 번 나오나 확인
-        dashboardData.groups.forEach(g => { if(g.members.includes(id)) count++; });
-        if(dashboardData.ungrouped.includes(id)) count++;
-
-        // 2곳 이상 속해있으면 뱃지 표시
-        if (count > 1) {
-            setTimeout(() => {
-                const badge = document.getElementById(`multi-${currentGroupId}-${id}`);
-                if(badge) badge.style.display = 'inline-block';
-            }, 100);
-        }
-    }
-
-    // --- 관리자 기능들 ---
-
-    function toggleAdmin() {
-        if (!isAdmin) {
-            if (prompt("비밀번호:") === ADMIN_PASSWORD) {
-                isAdmin = true;
-                document.getElementById('admin-panel').style.display = 'block';
-                document.querySelectorAll('.delete-btn').forEach(b => b.style.display = 'block');
-                document.querySelectorAll('.group-controls').forEach(b => b.style.display = 'flex');
-            }
-        } else {
-            isAdmin = false;
-            document.getElementById('admin-panel').style.display = 'none';
-            document.querySelectorAll('.delete-btn').forEach(b => b.style.display = 'none');
-            document.querySelectorAll('.group-controls').forEach(b => b.style.display = 'none');
-        }
-    }
-
-    // 그룹 생성
-    function addNewGroup() {
-        const name = document.getElementById('new-group-name').value;
-        if (!name) return alert('그룹 이름을 입력하세요');
-        
-        const newId = 'g_' + Date.now(); // 고유 ID 생성
-        dashboardData.groups.push({ id: newId, name: name, members: [] });
-        document.getElementById('new-group-name').value = '';
-        saveData();
-    }
-
-    // 그룹 순서 변경 (direction: -1 위로, 1 아래로)
-    function moveGroup(index, direction) {
-        const newIndex = index + direction;
-        if (newIndex < 0 || newIndex >= dashboardData.groups.length) return;
-        
-        // 순서 바꾸기 (Swap)
-        const temp = dashboardData.groups[index];
-        dashboardData.groups[index] = dashboardData.groups[newIndex];
-        dashboardData.groups[newIndex] = temp;
-        saveData();
-    }
-
-    // 그룹 삭제
-    function deleteGroup(index) {
-        if (!confirm("그룹을 삭제하면 멤버들은 '미분류'로 이동됩니다.")) return;
-        
-        const members = dashboardData.groups[index].members;
-        // 멤버들을 미분류로 이동
-        dashboardData.ungrouped.push(...members);
-        // 그룹 삭제
-        dashboardData.groups.splice(index, 1);
-        saveData();
-    }
-
-    // 스트리머 추가
-    function addStreamer() {
-        const id = document.getElementById('new-streamer-id').value.trim();
-        const targetGroupId = document.getElementById('group-select').value;
-        
-        if (!id) return alert('아이디를 입력하세요');
-
-        // 해당 그룹 찾기
-        if (targetGroupId === 'ungrouped') {
-            if (!dashboardData.ungrouped.includes(id)) dashboardData.ungrouped.push(id);
-        } else {
-            const group = dashboardData.groups.find(g => g.id === targetGroupId);
-            if (group && !group.members.includes(id)) group.members.push(id);
-        }
-
-        document.getElementById('new-streamer-id').value = '';
-        saveData();
-    }
-
-    // 멤버 삭제
-    function removeMember(id, groupId) {
-        if (!confirm('삭제하시겠습니까?')) return;
-        
-        if (groupId === 'g_ungrouped') {
-            dashboardData.ungrouped = dashboardData.ungrouped.filter(m => m !== id);
-        } else {
-            const group = dashboardData.groups.find(g => g.id === groupId);
-            if (group) group.members = group.members.filter(m => m !== id);
-        }
-        saveData();
-    }
-
-    // 관리자 UI 업데이트 (Select 박스 채우기 등)
-    function updateAdminUI() {
-        const select = document.getElementById('group-select');
-        select.innerHTML = '';
-        
-        dashboardData.groups.forEach(g => {
-            select.innerHTML += `<option value="${g.id}">${g.name}</option>`;
-        });
-        select.innerHTML += `<option value="ungrouped">기타 (미분류)</option>`;
-    }
-
-    // 모달 관련 (기존 유지)
-    function openModal(name) {
-        document.getElementById('modal').style.display='block';
-        document.getElementById('modal-title').innerText=name;
-        // (가짜 렌더링 유지)
-        const g=document.getElementById('calendar-grid'); g.innerHTML='';
-        for(let i=0;i<30;i++)g.innerHTML+=`<div class="cal-day">${i+1}</div>`;
-        new Chart(document.getElementById('timeChart'),{type:'line',data:{labels:[1,2],datasets:[{data:[10,20]}]}});
-    }
-    function closeModal(){document.getElementById('modal').style.display='none';}
-    window.onclick=(e)=>{if(e.target==document.getElementById('modal'))closeModal();}
-
-    init();
-</script>
-
-</body>
-</html>
+            const listRes = await fetch('list.json?t=' + Date.now());
+            if(listRes.ok) {
+                dashboard
