@@ -90,4 +90,140 @@
         try {
             const listRes = await fetch('list.json?t=' + Date.now());
             if(listRes.ok) {
-                dashboard
+                dashboardData = await listRes.json();
+                renderSkeleton();
+                fetchLiveStatus();
+            }
+        } catch (e) { console.error("초기화 실패:", e); }
+    }
+
+    // 2. 뼈대 그리기
+    function renderSkeleton() {
+        const container = document.getElementById('dashboard-content');
+        container.innerHTML = '';
+        
+        const allGroups = [...dashboardData.groups];
+        if(dashboardData.ungrouped.length > 0) {
+            allGroups.push({ id: 'g_ungrouped', name: '기타 (미분류)', members: dashboardData.ungrouped });
+        }
+
+        allGroups.forEach(group => {
+            const section = document.createElement('div');
+            section.className = 'group-section';
+            section.innerHTML = `
+                <div class="group-header"><span class="group-title">${group.name}</span></div>
+                <div class="grid" id="grid-${group.id}"></div>
+            `;
+            const grid = section.querySelector('.grid');
+            
+            group.members.forEach(member => {
+                // member가 객체({id, platform})일 수도 있고 문자열일 수도 있음 호환성 처리
+                const id = typeof member === 'string' ? member : member.id;
+                
+                const card = document.createElement('div');
+                card.className = 'card loading';
+                card.id = `card-base-${id}`;
+                card.innerHTML = `
+                    <div class="profile-wrapper">
+                        <img src="https://via.placeholder.com/90?text=..." style="opacity:0.5">
+                    </div>
+                    <h3>${id}</h3>
+                    <p class="status-text">확인 중...</p>
+                `;
+                grid.appendChild(card);
+            });
+            container.appendChild(section);
+        });
+    }
+
+    // 3. 실시간 상태 확인 (api/live.js 호출)
+    async function fetchLiveStatus() {
+        const allItems = [];
+        const pushMembers = (list) => list.forEach(m => {
+            // 중복 제거 및 포맷 통일
+            const item = typeof m === 'string' ? { id: m, platform: 'soop' } : m;
+            if(!allItems.find(x => x.id === item.id)) allItems.push(item);
+        });
+
+        dashboardData.groups.forEach(g => pushMembers(g.members));
+        pushMembers(dashboardData.ungrouped);
+
+        try {
+            const res = await fetch('/api/live', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: allItems })
+            });
+            
+            const results = await res.json();
+            updateUI(results);
+
+        } catch (e) { console.error("라이브 체크 실패:", e); }
+    }
+
+    // 4. 화면 업데이트
+    function updateUI(results) {
+        const statusMap = {};
+        results.forEach(r => statusMap[r.id] = r);
+
+        const container = document.getElementById('dashboard-content');
+        container.innerHTML = ''; 
+
+        const allGroups = [...dashboardData.groups];
+        if(dashboardData.ungrouped.length > 0) allGroups.push({ id: 'g_ungrouped', name: '기타 (미분류)', members: dashboardData.ungrouped });
+
+        allGroups.forEach(group => {
+            const section = document.createElement('div');
+            section.className = 'group-section';
+            section.innerHTML = `<div class="group-header"><span class="group-title">${group.name}</span></div><div class="grid"></div>`;
+            const grid = section.querySelector('.grid');
+
+            group.members.forEach(member => {
+                const m = typeof member === 'string' ? { id: member, platform: 'soop' } : member;
+                const data = statusMap[m.id] || { name: m.id, img: null, isLive: false, viewers: 0 };
+                
+                const card = createCardElement(m, data);
+                grid.appendChild(card);
+            });
+            container.appendChild(section);
+        });
+    }
+
+    function createCardElement(member, data) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        if (data.isLive) card.classList.add('is-live');
+        
+        // 플랫폼 뱃지
+        const pClass = member.platform === 'chzzk' ? 'chzzk' : 'soop';
+        const pName = member.platform === 'chzzk' ? 'C' : 'S';
+
+        // 이미지 (없으면 기본값)
+        const imgUrl = data.img || 'https://via.placeholder.com/90?text=NONE';
+
+        card.innerHTML = `
+            <div class="profile-wrapper">
+                <img src="${imgUrl}">
+                <div class="badges">
+                    <span class="badge platform ${pClass}">${pName}</span>
+                    <span class="badge live">LIVE</span>
+                </div>
+            </div>
+            <h3>${data.name}</h3>
+            <p class="status-text">
+                ${data.isLive ? `🔴 ${data.viewers.toLocaleString()}명` : '⚫ 오프라인'}
+            </p>
+        `;
+        
+        // 클릭 시 해당 플랫폼 방송국으로 이동
+        card.onclick = () => {
+            if(data.link) window.open(data.link, '_blank');
+        };
+        return card;
+    }
+
+    init();
+</script>
+
+</body>
+</html>
