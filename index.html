@@ -3,120 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌲스트리머-현황판</title>
+    <title>Streamer Board</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --primary: #2ed573; --bg: #f1f2f6; --card: #ffffff; --text: #2f3542; }
-        body { margin: 0; background: var(--bg); font-family: 'Pretendard', sans-serif; color: var(--text); }
+        :root { --primary: #42C769; --bg: #F0F2F5; --card: #ffffff; --text: #2f3542; }
+        body { margin: 0; background: var(--bg); font-family: 'Pretendard', -apple-system, sans-serif; color: var(--text); }
         
-        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
-        header { text-align: center; margin-bottom: 30px; }
-        header h1 { color: var(--primary); margin: 0; }
+        .container { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+        header { text-align: center; margin-bottom: 40px; position: relative; }
+        header h1 { color: #333; margin: 0; font-size: 2.5rem; letter-spacing: -1px; }
         
-        /* 카드 리스트 스타일 */
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
-        .card { background: var(--card); border-radius: 15px; padding: 15px; text-align: center; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px rgba(0,0,0,0.1); }
-        .card img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #eee; }
-        .card h3 { margin: 10px 0 5px; font-size: 1rem; }
-        .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; color: white; }
-        .badge.live { background: #ff4757; }
-        .badge.off { background: #a4b0be; }
-
-        /* 모달 스타일 */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
-        .modal-content { background: white; margin: 10% auto; padding: 20px; width: 90%; max-width: 600px; border-radius: 15px; }
-        .close-btn { float: right; font-size: 1.5rem; cursor: pointer; }
+        /* 관리자 버튼 스타일 */
+        .admin-btn { position: absolute; top: 0; right: 0; background: none; border: 1px solid #ddd; padding: 5px 10px; border-radius: 20px; cursor: pointer; color: #999; font-size: 0.8rem; }
+        .admin-btn:hover { background: #333; color: white; border-color: #333; }
         
-        /* 캘린더 스타일 */
-        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 20px; }
-        .cal-head { font-weight: bold; text-align: center; color: #747d8c; }
-        .cal-day { height: 50px; border: 1px solid #eee; border-radius: 8px; font-size: 0.8rem; padding: 5px; position: relative; }
-        .cal-day.has-vod { background-color: #eafef3; border-color: var(--primary); font-weight: bold; color: var(--primary); }
+        /* 관리자 패널 (평소엔 숨김) */
+        #admin-panel { display: none; background: white; padding: 15px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); text-align: center; }
+        .input-group { display: flex; gap: 10px; justify-content: center; max-width: 400px; margin: 0 auto; }
+        input[type="text"], input[type="password"] { padding: 10px; border: 1px solid #ddd; border-radius: 8px; flex: 1; }
+        button.action-btn { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        button.action-btn:hover { opacity: 0.9; }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
         
-        .chart-box { margin-top: 30px; height: 200px; }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <header>
-        <h1>🌲 SOOP Dashboard</h1>
-        <p>스트리머 방송 기록 & 통계</p>
-    </header>
-
-    <div id="streamer-list" class="grid">
-        </div>
-</div>
-
-<div id="modal" class="modal">
-    <div class="modal-content">
-        <span class="close-btn" onclick="closeModal()">&times;</span>
-        <h2 id="modal-title">방송 기록</h2>
-        <div class="calendar" id="calendar-grid"></div>
-        <div class="chart-box">
-            <canvas id="timeChart"></canvas>
-        </div>
-    </div>
-</div>
-
-<script>
-    // 1. 진짜 스트리머 ID 목록 (여기에 원하는 BJ 아이디를 넣으세요!)
-    const STREAMER_IDS = [
-        'bluejin0129', // 예시 ID
-        'moonightwmn', 
-        'gome02', 
-        'likethis1125' 
-    ];
-
-    const list = document.getElementById('card-list');
-
-    // 2. 데이터 가져오기 함수
-    async function loadStreamers() {
-        list.innerHTML = ''; // 목록 초기화
-
-        for (const id of STREAMER_IDS) {
-            // 카드 뼈대 만들기 (로딩 중 표시)
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.id = `card-${id}`;
-            card.innerHTML = `<p>데이터 로딩중...</p>`;
-            list.appendChild(card);
-
-            try {
-                // 아까 만든 엔진(API)에게 데이터 요청!
-                const res = await fetch(`/api/info?id=${id}`);
-                const data = await res.json();
-
-                // 카드 내용 채우기
-                card.innerHTML = `
-                    <img src="${data.img}" class="profile-img" alt="${data.name}">
-                    <div class="bj-name">${data.name}</div>
-                    <span class="status ${data.isLive ? 'live' : 'off'}">
-                        ${data.isLive ? '🔴 방송중' : '⚫ 오프라인'}
-                    </span>
-                `;
-                // 클릭하면 모달 열기 (기존 기능 유지)
-                card.onclick = () => openModal(data.name);
-
-            } catch (err) {
-                card.innerHTML = `<p>불러오기 실패<br>(${id})</p>`;
-            }
-        }
-    }
-
-    // 모달 관련 함수 (기존 유지)
-    function openModal(name) {
-        document.getElementById('modal').style.display = 'block';
-        document.getElementById('modal-title').innerText = `${name}님의 기록`;
-        renderCalendar();
-        renderChart();
-    }
-    function closeModal() { document.getElementById('modal').style.display = 'none'; }
-    function renderCalendar() { /* 달력 코드는 그대로 두거나 필요하면 복사 */ }
-    function renderChart() { /* 차트 코드도 그대로 */ }
-    window.onclick = (e) => { if(e.target == document.getElementById('modal')) closeModal(); }
-
-    // 시작!
-    loadStreamers();
-</script>
+        .card { 
+            position:
