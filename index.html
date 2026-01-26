@@ -7,13 +7,11 @@
     <style>
         body { margin: 0; background: #F0F2F5; font-family: sans-serif; padding: 20px; }
         .container { max-width: 1000px; margin: 0 auto; }
-        .group-title { font-size: 1.5rem; font-weight: bold; margin: 30px 0 15px; border-bottom: 2px solid #ddd; display:block; }
+        .group-title { font-size: 1.5rem; font-weight: bold; margin: 30px 0 15px; border-bottom: 2px solid #ddd; display:block; color:#333; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
-        
         .card { background: white; padding: 20px; border-radius: 15px; text-align: center; cursor: pointer; transition: 0.2s; border: 2px solid transparent; }
         .card:hover { transform: translateY(-5px); }
         .card.is-live { border-color: #ff4757; background: #fff0f0; }
-        
         .profile-img { width: 80px; height: 80px; border-radius: 50%; background: #eee; object-fit: cover; margin-bottom: 10px; }
         .badge { font-size: 0.8rem; padding: 2px 5px; border-radius: 4px; color: white; margin-right: 5px;}
         .soop { background: #42C769; } .chzzk { background: #00E59D; color:#333; }
@@ -29,65 +27,61 @@
 </div>
 
 <script>
-    // 🔥 본인 Supabase 주소 (https://...supabase.co)
-    const SUPABASE_URL = "https://fnasnyvtbifgpmxplkkd.supabase.co"; 
-    const LIST_URL = `${SUPABASE_URL}/storage/v1/object/public/configs/list.json`;
-
     async function init() {
         try {
-            // 1. [파일 로드] 그룹 배치도 가져오기 (ID만 있음)
-            const listRes = await fetch(LIST_URL + '?t=' + Date.now());
-            if(!listRes.ok) throw new Error("배치 파일 없음");
-            const uiData = await listRes.json();
+            // 1. [DB] 모든 데이터 가져오기 (그룹명 포함됨)
+            const res = await fetch('/api/get_list');
+            const data = await res.json();
 
-            // 2. [DB 로드] 상세 정보 가져오기 (닉네임, 프사)
-            const dbRes = await fetch('/api/get_list');
-            const dbData = await dbRes.json();
-            
-            // DB 데이터를 쓰기 좋게 맵(Map)으로 변환
-            const dbMap = {};
-            dbData.forEach(item => dbMap[item.id] = item);
+            if (!data || data.length === 0) {
+                document.getElementById('board').innerHTML = '<p style="text-align:center">등록된 스트리머가 없습니다.</p>';
+                return;
+            }
 
-            // 3. [합체] 배치도 + DB정보 렌더링
-            render(uiData.groups, dbMap);
+            // 2. [JS] 그룹별로 묶기
+            // 예: { "왁타버스": [멤버1, 멤버2], "기타": [멤버3] }
+            const grouped = {};
+            data.forEach(m => {
+                const gName = m.group_name || '미분류';
+                if (!grouped[gName]) grouped[gName] = [];
+                grouped[gName].push(m);
+            });
 
-            // 4. [Live] 방송 확인
-            checkLive(uiData.groups);
+            // 3. 화면 그리기
+            render(grouped);
+
+            // 4. [Live] 방송 확인 (api/live.js 호출)
+            checkLive(data);
 
         } catch (e) {
             console.error(e);
-            document.getElementById('board').innerHTML = '<p style="text-align:center">데이터 로딩 실패</p>';
+            document.getElementById('board').innerHTML = '<p style="text-align:center">로딩 실패</p>';
         }
     }
 
-    function render(groups, dbMap) {
+    function render(groupedData) {
         const board = document.getElementById('board');
         board.innerHTML = '';
 
-        groups.forEach(g => {
+        // 그룹 이름 가나다순 정렬
+        Object.keys(groupedData).sort().forEach(gName => {
+            const members = groupedData[gName];
+            
             const section = document.createElement('div');
-            section.innerHTML = `<span class="group-title">${g.name}</span><div class="grid"></div>`;
+            section.innerHTML = `<span class="group-title">${gName}</span><div class="grid"></div>`;
             const grid = section.querySelector('.grid');
 
-            g.members.forEach(m => {
-                // 🔥 여기가 핵심: 파일에는 ID만 있지만, 닉네임/프사는 DB(dbMap)에서 꺼내 씁니다.
-                const info = dbMap[m.id] || {}; // DB 정보
+            members.forEach(m => {
                 const pf = m.platform || 'soop';
-                
-                // 닉네임: DB에 있으면 그거 쓰고, 정 없으면 ID라도 보여줌
-                const displayName = info.nickname || m.id;
-                // 프사: DB에 있으면 그거 쓰고, 없으면 기본이미지
-                const displayImg = info.profile_img || 'https://via.placeholder.com/80?text=Wait';
-
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.id = `card-${m.id}`;
                 card.onclick = () => window.open(pf === 'chzzk' ? `https://chzzk.naver.com/live/${m.id}` : `https://play.afreecatv.com/${m.id}`);
 
                 card.innerHTML = `
-                    <img src="${displayImg}" class="profile-img">
+                    <img src="${m.profile_img || 'https://via.placeholder.com/80'}" class="profile-img">
                     <div><span class="badge ${pf}">${pf==='chzzk'?'C':'S'}</span></div>
-                    <h3 style="margin:10px 0 5px; font-size:1.1rem">${displayName}</h3>
+                    <h3 style="margin:10px 0 5px; font-size:1.1rem">${m.nickname || m.id}</h3>
                     <p class="status">오프라인</p>
                 `;
                 grid.appendChild(card);
@@ -96,13 +90,11 @@
         });
     }
 
-    async function checkLive(groups) {
-        let items = [];
-        groups.forEach(g => items.push(...g.members));
-        
+    async function checkLive(allMembers) {
+        const targets = allMembers.map(m => ({ id: m.id, platform: m.platform }));
         const res = await fetch('/api/live', {
             method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ items })
+            body: JSON.stringify({ items: targets })
         });
         const results = await res.json();
 
@@ -110,9 +102,7 @@
             const card = document.getElementById(`card-${r.id}`);
             if(card && r.isLive) {
                 card.classList.add('is-live');
-                card.querySelector('.status').innerHTML = `<span style="color:red;font-weight:bold">🔴 ${r.viewers}명</span>`;
-                // 썸네일로 교체 (선택사항)
-                if(r.img) card.querySelector('.profile-img').src = r.img;
+                card.querySelector('.status').innerHTML = `<span style="color:red;font-weight:bold">🔴 ${r.viewers.toLocaleString()}명</span>`;
             }
         });
     }
