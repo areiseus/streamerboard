@@ -5,163 +5,119 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Streamer Board</title>
     <style>
-        :root { --primary: #42C769; --bg: #F0F2F5; --card: #ffffff; --text: #2f3542; }
-        body { margin: 0; background: var(--bg); font-family: 'Pretendard', sans-serif; color: var(--text); }
-        .container { max-width: 1000px; margin: 0 auto; padding: 40px 20px; position: relative; }
+        body { margin: 0; background: #F0F2F5; font-family: sans-serif; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .group-title { font-size: 1.5rem; font-weight: bold; margin: 30px 0 15px; border-bottom: 2px solid #ddd; display:block; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
         
-        header { text-align: center; margin-bottom: 30px; }
-        header h1 { color: #333; margin: 0; font-size: 2.5rem; letter-spacing: -1px; }
+        .card { background: white; padding: 20px; border-radius: 15px; text-align: center; cursor: pointer; transition: 0.2s; border: 2px solid transparent; }
+        .card:hover { transform: translateY(-5px); }
+        .card.is-live { border-color: #ff4757; background: #fff0f0; }
         
-        /* 우측 상단 관리자 버튼 */
-        .admin-link-btn {
-            position: absolute; top: 20px; right: 20px;
-            background: white; border: 1px solid #ddd; padding: 8px 15px; border-radius: 20px;
-            font-size: 0.85rem; color: #666; cursor: pointer; text-decoration: none; font-weight: bold;
-            transition: all 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-        .admin-link-btn:hover { background: #333; color: white; border-color: #333; }
-
-        /* 그리드 레이아웃 */
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; margin-top: 30px;}
-        
-        /* 카드 스타일 */
-        .card { 
-            position: relative; background: var(--card); border-radius: 20px; padding: 25px 15px; text-align: center; 
-            cursor: pointer; transition: all 0.3s ease; border: 1px solid transparent; box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-        }
-        .card:hover { transform: translateY(-5px); border-color: var(--primary); }
-        .card.is-live { border-color: #ff4757; background: #fff5f5; }
-        
-        .profile-wrapper { position: relative; width: 90px; height: 90px; margin: 0 auto 15px; }
-        .card img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid #eee; background: #eee;}
-        
-        .badges { position: absolute; bottom: -5px; width: 100%; text-align: center; display: flex; justify-content: center; gap: 5px; }
-        .badge { padding: 4px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; color: white; }
-        
-        .badge.live { background: #ff4757; display: none; }
-        .card.is-live .badge.live { display: inline-block; }
-        
-        .badge.soop { background: #42C769; }
-        .badge.chzzk { background: #00E59D; color: #1e1e1e; }
-        
-        .status-text { font-size: 0.85rem; color: #888; margin-top: 5px;}
-        .card.is-live .status-text { color: #ff4757; font-weight: bold; }
+        .profile-img { width: 80px; height: 80px; border-radius: 50%; background: #eee; object-fit: cover; margin-bottom: 10px; }
+        .badge { font-size: 0.8rem; padding: 2px 5px; border-radius: 4px; color: white; margin-right: 5px;}
+        .soop { background: #42C769; } .chzzk { background: #00E59D; color:#333; }
+        .status { color: #888; margin-top: 5px; font-size: 0.9rem; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <header>
-        <h1>Streamer Board</h1>
-        <p>실시간 방송 현황 (DB 연동됨)</p>
-        <button class="admin-link-btn" onclick="location.href='admin.html'">⚙️ 관리자</button>
-    </header>
-
-    <div id="dashboard-content" class="grid">
-        <p style="text-align:center; width:100%; color:#666;">데이터를 불러오는 중입니다...</p>
-    </div>
+    <h1 style="text-align:center">Streamer Board</h1>
+    <a href="admin.html" style="position:absolute; top:20px; right:20px; text-decoration:none">⚙️</a>
+    <div id="board"><p style="text-align:center">로딩 중...</p></div>
 </div>
 
 <script>
-    // 1. 초기화: DB에서 목록 가져오기
+    // 🔥 본인 Supabase 주소 (https://...supabase.co)
+    const SUPABASE_URL = "https://fnasnyvtbifgpmxplkkd.supabase.co"; 
+    const LIST_URL = `${SUPABASE_URL}/storage/v1/object/public/configs/list.json`;
+
     async function init() {
         try {
-            // DB 목록 API 호출
-            const res = await fetch('/api/get_list');
-            if(!res.ok) throw new Error("DB 로드 실패");
-            
-            const streamers = await res.json();
-            
-            if(streamers.length === 0) {
-                document.getElementById('dashboard-content').innerHTML = '<p style="padding:20px; text-align:center;">등록된 스트리머가 없습니다.<br>관리자 페이지에서 추가하고 [⚡프로필 갱신]을 눌러주세요.</p>';
-                return;
-            }
+            // 1. [파일 로드] 그룹 배치도 가져오기 (ID만 있음)
+            const listRes = await fetch(LIST_URL + '?t=' + Date.now());
+            if(!listRes.ok) throw new Error("배치 파일 없음");
+            const uiData = await listRes.json();
 
-            // 화면 그리기 (초기 상태)
-            renderCards(streamers);
+            // 2. [DB 로드] 상세 정보 가져오기 (닉네임, 프사)
+            const dbRes = await fetch('/api/get_list');
+            const dbData = await dbRes.json();
             
-            // 실시간 방송 여부 확인 시작
-            fetchLiveStatus(streamers);
+            // DB 데이터를 쓰기 좋게 맵(Map)으로 변환
+            const dbMap = {};
+            dbData.forEach(item => dbMap[item.id] = item);
 
-        } catch (e) { 
-            console.error(e); 
-            document.getElementById('dashboard-content').innerHTML = '<p>데이터 로딩 중 오류가 발생했습니다.</p>';
+            // 3. [합체] 배치도 + DB정보 렌더링
+            render(uiData.groups, dbMap);
+
+            // 4. [Live] 방송 확인
+            checkLive(uiData.groups);
+
+        } catch (e) {
+            console.error(e);
+            document.getElementById('board').innerHTML = '<p style="text-align:center">데이터 로딩 실패</p>';
         }
     }
 
-    // 2. 카드 렌더링
-    function renderCards(list) {
-        const container = document.getElementById('dashboard-content');
-        container.innerHTML = ''; // 초기화
+    function render(groups, dbMap) {
+        const board = document.getElementById('board');
+        board.innerHTML = '';
 
-        list.forEach(item => {
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.id = `card-${item.id}`; // 나중에 업데이트를 위해 ID 부여
-            
-            const pClass = item.platform === 'chzzk' ? 'chzzk' : 'soop';
-            const pName = item.platform === 'chzzk' ? 'C' : 'S';
-            const imgUrl = item.profile_img || 'https://via.placeholder.com/90?text=NoImg';
+        groups.forEach(g => {
+            const section = document.createElement('div');
+            section.innerHTML = `<span class="group-title">${g.name}</span><div class="grid"></div>`;
+            const grid = section.querySelector('.grid');
 
-            card.innerHTML = `
-                <div class="profile-wrapper">
-                    <img src="${imgUrl}">
-                    <div class="badges">
-                        <span class="badge ${pClass}">${pName}</span>
-                        <span class="badge live">LIVE</span>
-                    </div>
-                </div>
-                <h3>${item.nickname || item.id}</h3>
-                <p class="status-text" id="status-${item.id}">오프라인</p>
-            `;
-            
-            // 클릭 시 이동
-            let link = item.platform === 'chzzk' 
-                ? `https://chzzk.naver.com/live/${item.id}` 
-                : `https://play.afreecatv.com/${item.id}`;
+            g.members.forEach(m => {
+                // 🔥 여기가 핵심: 파일에는 ID만 있지만, 닉네임/프사는 DB(dbMap)에서 꺼내 씁니다.
+                const info = dbMap[m.id] || {}; // DB 정보
+                const pf = m.platform || 'soop';
                 
-            card.onclick = () => window.open(link, '_blank');
-            container.appendChild(card);
+                // 닉네임: DB에 있으면 그거 쓰고, 정 없으면 ID라도 보여줌
+                const displayName = info.nickname || m.id;
+                // 프사: DB에 있으면 그거 쓰고, 없으면 기본이미지
+                const displayImg = info.profile_img || 'https://via.placeholder.com/80?text=Wait';
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.id = `card-${m.id}`;
+                card.onclick = () => window.open(pf === 'chzzk' ? `https://chzzk.naver.com/live/${m.id}` : `https://play.afreecatv.com/${m.id}`);
+
+                card.innerHTML = `
+                    <img src="${displayImg}" class="profile-img">
+                    <div><span class="badge ${pf}">${pf==='chzzk'?'C':'S'}</span></div>
+                    <h3 style="margin:10px 0 5px; font-size:1.1rem">${displayName}</h3>
+                    <p class="status">오프라인</p>
+                `;
+                grid.appendChild(card);
+            });
+            board.appendChild(section);
         });
     }
 
-    // 3. 실시간 상태 확인 (api/live.js 호출)
-    async function fetchLiveStatus(streamers) {
-        try {
-            // DB 형식 데이터를 API가 원하는 형식으로 변환 ({id, platform})
-            const targets = streamers.map(s => ({ id: s.id, platform: s.platform }));
+    async function checkLive(groups) {
+        let items = [];
+        groups.forEach(g => items.push(...g.members));
+        
+        const res = await fetch('/api/live', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ items })
+        });
+        const results = await res.json();
 
-            const res = await fetch('/api/live', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: targets })
-            });
-            
-            const results = await res.json();
-            updateUI(results);
-
-        } catch (e) { console.error("라이브 체크 실패:", e); }
-    }
-
-    // 4. 상태 업데이트 (색상, 텍스트 변경)
-    function updateUI(results) {
         results.forEach(r => {
             const card = document.getElementById(`card-${r.id}`);
-            const statusText = document.getElementById(`status-${r.id}`);
-            if(!card || !statusText) return;
-
-            if(r.isLive) {
+            if(card && r.isLive) {
                 card.classList.add('is-live');
-                statusText.innerText = `🔴 ${r.viewers ? r.viewers.toLocaleString() : '방송중'}`;
-            } else {
-                card.classList.remove('is-live');
-                statusText.innerText = '⚫ 오프라인';
+                card.querySelector('.status').innerHTML = `<span style="color:red;font-weight:bold">🔴 ${r.viewers}명</span>`;
+                // 썸네일로 교체 (선택사항)
+                if(r.img) card.querySelector('.profile-img').src = r.img;
             }
         });
     }
 
     init();
 </script>
-
 </body>
 </html>
