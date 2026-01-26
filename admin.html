@@ -4,56 +4,66 @@
     <meta charset="UTF-8">
     <title>관리자 페이지</title>
     <style>
-        /* 기본 레이아웃 설정 */
-        body { background: #222; color: #fff; padding: 20px; font-family: 'Pretendard', sans-serif; max-width: 1200px; margin: 0 auto; padding-bottom: 50px; }
+        /* 기본 스타일 */
+        body { background: #222; color: #fff; padding: 20px; font-family: 'Pretendard', sans-serif; max-width: 1200px; margin: 0 auto; padding-bottom: 300px; /* 로그창 가리지 않게 여백 */ }
         
-        /* 로그인 화면 스타일 */
+        /* 로그인 창 */
         #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .login-box { background: #333; padding: 40px; border-radius: 10px; border: 1px solid #555; text-align: center; width: 300px; }
         
-        /* 메인 컨텐츠 영역 */
+        /* 패널 스타일 */
         #adminContent { display: none; }
         .panel { background: #333; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #444; }
         
-        /* 입력폼 및 버튼 */
+        /* 입력 도구 */
         input, select { padding: 10px; background: #444; border: 1px solid #555; color: white; border-radius: 4px; margin-right: 5px; box-sizing: border-box; }
         button { cursor: pointer; border: none; border-radius: 4px; padding: 10px 15px; color: white; font-weight: bold; transition: 0.2s; }
         button:hover { opacity: 0.8; }
         
-        /* 테이블 스타일 */
+        /* 테이블 */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
         th { background: #444; padding: 10px; text-align: center; border-bottom: 2px solid #555; }
         td { border-bottom: 1px solid #555; padding: 10px; text-align: center; }
         
-        /* 뱃지 및 기타 스타일 */
+        /* 뱃지 */
         .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; color:black; font-weight: bold;}
         .soop { background: #42C769; } .chzzk { background: #00E59D; }
         .highlight { color: #f1c40f; font-weight: bold; }
         .step-box { border-left: 5px solid #3498db; padding-left: 15px; margin-bottom: 20px; }
         .btn-delete { background: #c0392b; font-size: 0.8rem; padding: 5px 10px; margin-left: 5px; }
-        
-        /* ★★★ [수정됨] 로그창 전용 스타일 (크기 고정, 눈에 띄게 설정) ★★★ */
-        .log-section {
-            margin-top: 30px;
-            padding: 15px;
-            background-color: #000; /* 완전 검은색 */
-            border: 2px solid #00ff00; /* 형광 초록 테두리 */
-            border-radius: 8px;
-            box-shadow: 0 0 15px rgba(0, 255, 0, 0.1);
+
+        /* ★★★ [무조건 보이는 강제 고정 로그창 스타일] ★★★ */
+        #fixed-log-container {
+            position: fixed;       /* 스크롤 상관없이 화면 고정 */
+            bottom: 0;             /* 화면 맨 아래 */
+            left: 0;               /* 왼쪽 끝 */
+            width: 100%;           /* 너비 꽉 채움 */
+            height: 250px;         /* 높이 고정 */
+            background-color: #000;/* 완전 검정 배경 */
+            border-top: 3px solid #00ff00; /* 위쪽에 형광 초록 테두리 */
+            z-index: 2147483647;   /* 무조건 맨 위에 표시 (가장 높은 값) */
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.8);
+            display: flex;         /* 내부 정렬용 */
+            flex-direction: column;
         }
-        .log-header {
-            font-size: 16px; font-weight: bold; color: #00ff00; 
-            border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 10px;
+        .log-title-bar {
+            padding: 5px 15px;
+            background: #111;
+            border-bottom: 1px solid #333;
+            color: #00ff00;
+            font-weight: bold;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
         }
         #static-log-window {
-            height: 250px; /* 높이 강제 고정 */
-            overflow-y: scroll; /* 스크롤바 무조건 생성 */
+            flex: 1;
+            overflow-y: scroll;
+            padding: 15px;
             font-family: 'Courier New', monospace;
             font-size: 13px;
             color: #ddd;
-            line-height: 1.6;
-            background-color: #111;
-            padding: 10px;
+            line-height: 1.5;
         }
     </style>
 </head>
@@ -125,27 +135,28 @@
                         </tr>
                     </thead>
                     <tbody id="dbBody">
-                        <tr><td colspan="6" style="padding: 20px; color: #999;">데이터를 불러오는 중...</td></tr>
+                        <tr><td colspan="6" style="padding: 20px; color: #999;">로딩 중...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
-
-        <div class="log-section">
-            <div class="log-header">🖥️ 시스템 로그 (System Log) - 항상 표시됨</div>
-            <div id="static-log-window">
-                [대기중] 로그창이 정상적으로 로드되었습니다.<br>
-                👉 위쪽의 <b>[모두 갱신]</b> 버튼을 누르면 작업 진행 상황이 이곳에 표시됩니다.
-            </div>
+    </div> 
+    <div id="fixed-log-container">
+        <div class="log-title-bar">
+            <span>🖥️ 시스템 실시간 로그 (System Log)</span>
+            <button onclick="document.getElementById('fixed-log-container').style.height = document.getElementById('fixed-log-container').style.height === '30px' ? '250px' : '30px'" style="padding:0 5px; font-size:11px; background:#444;">🔼/🔽</button>
         </div>
-
+        <div id="static-log-window">
+            [대기상태] 로그창이 활성화되었습니다.<br>
+            👉 위쪽의 <b>[모두 갱신]</b> 버튼을 누르면, 이곳에 처리 과정이 실시간으로 출력됩니다.
+        </div>
     </div>
-    
+
 <script>
     let draftList = []; 
     let groupSet = new Set(); 
 
-    // --- 1. 로그인 및 초기화 ---
+    // 1. 로그인
     async function checkLogin() {
         try {
             const res = await fetch('admin.json');
@@ -156,13 +167,13 @@
                 document.getElementById('loginOverlay').style.display = 'none';
                 document.getElementById('adminContent').style.display = 'block';
                 init(); 
-            } else { alert('비밀번호가 틀렸습니다.'); }
-        } catch(e) { alert('로그인 시스템 오류: ' + e.message); }
+            } else { alert('비밀번호 불일치'); }
+        } catch(e) { alert('로그인 오류: ' + e.message); }
     }
 
     async function init() { await loadDBList(); }
 
-    // --- 2. 로컬 그룹 관리 ---
+    // 2. 그룹 관리
     function addGroupLocal() {
         const name = document.getElementById('localGroupName').value.trim();
         if(!name) return alert('그룹명을 입력하세요.');
@@ -186,18 +197,18 @@
         });
     }
 
-    // --- 3. 스트리머 조회 및 대기 목록 추가 ---
+    // 3. 리스트에 담기
     async function lookupAndAdd() {
         const group_name = document.getElementById('selGroup').value;
         const platform = document.getElementById('selPlatform').value;
         const idInput = document.getElementById('inpId');
         
-        if (!idInput) return alert('입력창을 찾을 수 없습니다.');
+        if (!idInput) return alert('입력창 HTML 요소가 없습니다.');
         const id = idInput.value.trim();
 
-        if(!group_name) return alert('그룹을 먼저 선택해주세요.');
+        if(!group_name) return alert('그룹을 선택해주세요.');
         if(!id) return alert('ID를 입력해주세요.');
-        if(draftList.find(d => d.id === id)) return alert('이미 대기 목록에 있습니다.');
+        if(draftList.find(d => d.id === id)) return alert('이미 목록에 있습니다.');
 
         try {
             const res = await fetch('/api/lookup', {
@@ -208,10 +219,9 @@
 
             if (!res.ok) {
                 const errData = await res.json();
-                throw new Error(errData.error || '조회 실패');
+                throw new Error(errData.error || '조회 오류');
             }
             const data = await res.json();
-
             if(data.status === 'duplicate') return alert('이미 DB에 등록된 스트리머입니다.');
 
             draftList.push({
@@ -222,7 +232,7 @@
             });
             renderDraft();
             document.getElementById('inpId').value = ''; 
-        } catch(e) { alert('조회 오류: ' + e.message); }
+        } catch(e) { alert('조회 실패: ' + e.message); }
     }
 
     function renderDraft() {
@@ -243,9 +253,9 @@
         renderDraft();
     }
 
-    // --- 4. 최초 등록 (배치 저장) ---
+    // 4. 저장 (최초 등록)
     async function saveBatch() {
-        if(draftList.length === 0) return alert('저장할 목록이 없습니다.');
+        if(draftList.length === 0) return alert('목록이 비었습니다.');
         const btn = document.querySelector('button[onclick="saveBatch()"]');
         btn.innerText = '⏳ 저장 중...'; btn.disabled = true;
 
@@ -259,11 +269,11 @@
                 alert(`✅ ${result.count}명 저장 완료!`);
                 draftList = []; renderDraft(); loadDBList(); 
             } else { throw new Error(result.error || '저장 실패'); }
-        } catch(e) { alert('저장 오류: ' + e.message); }
+        } catch(e) { alert('오류: ' + e.message); }
         btn.innerText = '💾 [최초 등록] 실행'; btn.disabled = false;
     }
 
-    // --- 5. 삭제 기능 ---
+    // 5. 삭제
     async function deleteStreamer(id) {
         if(!confirm('정말 삭제하시겠습니까?')) return;
         try {
@@ -277,21 +287,18 @@
                 const err = await res.json();
                 alert('삭제 실패: ' + err.error);
             }
-        } catch(e) { alert('삭제 통신 오류: ' + e.message); }
+        } catch(e) { alert('삭제 오류: ' + e.message); }
     }
 
-    // --- 6. DB 목록 불러오기 ---
+    // 6. DB 목록 로드
     async function loadDBList() {
         try {
             const res = await fetch('/api/get_list');
             const data = await res.json();
-            
-            // 그룹 정보 복원
             data.forEach(m => { if(m.group_name) groupSet.add(m.group_name); });
             renderGroups();
             document.getElementById('totalCnt').innerText = data.length;
             
-            // 테이블 그리기
             document.getElementById('dbBody').innerHTML = data.map(m => `
                 <tr>
                     <td style="color:#f1c40f;">${m.group_name || '-'}</td>
@@ -305,26 +312,26 @@
                     </td>
                 </tr>
             `).join('');
-        } catch(e) { console.error("목록 로드 실패:", e); }
+        } catch(e) { console.error(e); }
     }
 
-    // --- 7. [전체 갱신] 및 로그 출력 ---
+    // 7. [전체 갱신] 로그 기능 연결
     async function updateFull() {
-        if(!confirm('전체 스트리머 정보를 갱신하시겠습니까?')) return;
+        if(!confirm('전체 갱신하시겠습니까?')) return;
 
-        // 로그창 객체 확보
+        // 로그창 객체 찾기
         const logWindow = document.getElementById('static-log-window');
         const btn = document.querySelector('button[onclick="updateFull()"]');
 
-        // 로그창에 시작 알림
         if(logWindow) {
-            logWindow.innerHTML = "🔄 [시스템] 서버와 통신 준비 중...<br>";
+            logWindow.innerHTML = "🔄 [1/3] 서버 통신 준비 중...<br>";
+            // 로그창 맨 아래로 스크롤
             logWindow.scrollTop = logWindow.scrollHeight;
         }
         if(btn) btn.innerText = '⏳ 처리중...';
 
         try {
-            // API 호출 (빈 배열 items 전송 -> 전체 갱신 트리거)
+            // API 호출 (빈 배열 items -> 전체 갱신)
             const res = await fetch('/api/register_batch', { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -332,33 +339,32 @@
             });
             const json = await res.json();
 
-            // 로그가 있으면 화면에 뿌리기
+            // 결과 로그 출력
             if(logWindow && json.logs && Array.isArray(json.logs)) {
-                logWindow.innerHTML = ""; // 기존 대기 메시지 클리어
+                logWindow.innerHTML = ""; // 초기화
                 
                 json.logs.forEach(msg => {
-                    let style = "color: #ccc;"; // 기본: 밝은 회색
-                    
+                    let style = "color: #ccc;";
                     if(msg.includes('에러') || msg.includes('실패')) style = "color: #ff5555; font-weight:bold;";
                     else if(msg.includes('성공')) style = "color: #55ff55;";
-                    else if(msg.includes('주소')) style = "color: #ffff00;"; // 노란색
-                    else if(msg.includes('SOOP')) style = "color: #00ffff;"; // 청록색
+                    else if(msg.includes('주소')) style = "color: #ffff00;"; 
+                    else if(msg.includes('SOOP')) style = "color: #00ffff;";
 
                     logWindow.innerHTML += `<div style="${style}">${msg}</div>`;
                 });
                 
                 logWindow.innerHTML += "<br>✅ <strong>[완료] 모든 작업이 끝났습니다.</strong>";
-                logWindow.scrollTop = logWindow.scrollHeight; // 스크롤바 맨 아래로
+                logWindow.scrollTop = logWindow.scrollHeight; 
             } else if (logWindow) {
-                logWindow.innerHTML += `<br>⚠️ 서버에서 로그가 오지 않았습니다. (응답: ${JSON.stringify(json)})`;
+                logWindow.innerHTML += `<br>⚠️ 서버 로그 없음: ${JSON.stringify(json)}`;
             }
 
         } catch (e) {
-            if(logWindow) logWindow.innerHTML += `<br>❌ [치명적 통신 오류] ${e.message}`;
+            if(logWindow) logWindow.innerHTML += `<br>❌ [에러] ${e.message}`;
             console.error(e);
         } finally {
             if(btn) btn.innerText = '🔄 [모두 갱신]';
-            loadDBList(); // 목록 새로고침
+            loadDBList(); 
         }
     }
 </script>    
