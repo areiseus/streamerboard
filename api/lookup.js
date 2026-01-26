@@ -57,4 +57,15 @@ export default async function handler(req, res) {
         }
 
         if (!found) {
-            return res.status(40
+            return res.status(404).json({ error: '해당 플랫폼에서 아이디를 찾을 수 없습니다.' });
+        }
+
+        // 성공 결과 반환
+        res.status(200).json({ status: 'ok', id, platform, nickname });
+
+    } catch (e) {
+        // 서버 에러 발생 시 메시지 전송
+        console.error(e);
+        res.status(500).json({ error: e.message });
+    }
+}
