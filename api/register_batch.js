@@ -1,89 +1,72 @@
-const fs = require('fs');
-const path = require('path');
+import { createClient } from '@supabase/supabase-js';
 
-// DB 파일 위치 (api 폴더 기준 상위 폴더의 list.json)
-const DB_FILE = path.join(__dirname, '../list.json');
+const supabase = createClient(
+    process.env.streamer_db_URL,
+    process.env.streamer_db_KEY
+);
 
-module.exports = async (req, res) => {
-    // 1. 요청 데이터 받기
-    // (서버 환경에 따라 req.body를 쓰는 방식이 다를 수 있음. Express 기준)
-    const { id, platform, group_name } = req.body;
+export default async function handler(req, res) {
+    // 1. 화면(admin.html)에서 보낸 데이터 받기
+    const { items } = req.body; 
 
-    if (!id || !platform) {
-        return res.status(400).json({ error: 'ID와 플랫폼을 입력해주세요.' });
+    if (!items || items.length === 0) {
+        return res.status(400).json({ error: '저장할 데이터가 없습니다.' });
     }
-
-    console.log(`[등록 시작] ${platform} - ${id}`);
-
-    // 저장할 기본 데이터 틀
-    let streamerInfo = {
-        id: id,
-        platform: platform,
-        group_name: group_name || '미분류',
-        nickname: id, // 못 가져오면 ID라도 씀
-        profile_img: '',
-        open_date: '',
-        registered_at: new Date().toISOString().split('T')[0]
-    };
 
     try {
-        // 2. 플랫폼별 정보 긁어오기 (라이브러리 없이 내장 fetch 사용)
-        if (platform === 'chzzk') {
-            const url = `https://api.chzzk.naver.com/service/v1/channels/${id}`;
-            const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        const results = await Promise.all(items.map(async (item) => {
             
-            if (response.ok) {
-                const json = await response.json();
-                const content = json.content;
-                if (content) {
-                    streamerInfo.nickname = content.channelName;
-                    streamerInfo.profile_img = content.channelImageUrl;
-                    streamerInfo.open_date = content.openDate ? content.openDate.split(' ')[0] : '';
-                }
-            }
-        } 
-        else if (platform === 'soop') {
-            const url = `https://bjapi.afreecatv.com/api/${id}/station`;
-            const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-            
-            if (response.ok) {
-                const json = await response.json();
-                const station = json.station;
-                if (station) {
-                    streamerInfo.nickname = station.user_nick;
-                    streamerInfo.profile_img = 'https:' + station.image_profile;
-                    streamerInfo.open_date = station.station_open_date || '';
-                }
-            }
-        }
+            // ▼▼▼ 여기가 제일 중요합니다 ▼▼▼
+            // 화면에서 보낸 group_name을 DB에 그대로 넣습니다.
+            let dbData = {
+                id: item.id,
+                platform: item.platform,
+                group_name: item.group_name, // (수동으로 바꾼 DB 컬럼명과 일치)
+                is_active: true,
+                last_updated_at: new Date()
+            };
 
-        // 3. list.json 파일 읽어서 저장하기
-        let currentList = [];
-        if (fs.existsSync(DB_FILE)) {
-            const fileData = fs.readFileSync(DB_FILE, 'utf8');
+            // [상세 정보 수집: 닉네임, 프사, 방송국개설일]
             try {
-                currentList = JSON.parse(fileData);
-            } catch (e) { currentList = []; }
-        }
+                // SOOP (숲)
+                if (item.platform === 'soop') {
+                    const resp = await fetch(`https://bjapi.afreecatv.com/api/${item.id}/station`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+                    const json = await resp.json();
+                    if (json.station) {
+                        dbData.nickname = json.station.user_nick;
+                        dbData.profile_img = 'https:' + json.station.image_profile;
+                        dbData.station_open_date = json.station.station_open_date;
+                    }
+                } 
+                // CHZZK (치지직)
+                else if (item.platform === 'chzzk') {
+                    const resp = await fetch(`https://api.chzzk.naver.com/service/v1/channels/${item.id}`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+                    const json = await resp.json();
+                    if (json.content) {
+                        dbData.nickname = json.content.channelName;
+                        dbData.profile_img = json.content.channelImageUrl;
+                        dbData.station_open_date = json.content.openDate ? json.content.openDate.split(' ')[0] : null;
+                    }
+                }
+            } catch (err) {
+                console.error(`수집 실패 (${item.id})`, err);
+                // 실패해도 기본 정보(ID, 그룹명)는 저장합니다.
+            }
 
-        // 이미 있는 ID면 정보 갱신, 없으면 추가
-        const idx = currentList.findIndex(item => item.id === id);
-        if (idx !== -1) {
-            currentList[idx] = { ...currentList[idx], ...streamerInfo };
-        } else {
-            currentList.push(streamerInfo);
-        }
+            return dbData;
+        }));
 
-        // 파일에 쓰기 (DB 저장)
-        fs.writeFileSync(DB_FILE, JSON.stringify(currentList, null, 2), 'utf8');
+        // 3. 진짜 DB에 넣기
+        const { data, error } = await supabase
+            .from('streamers')
+            .upsert(results)
+            .select();
 
-        console.log(`[성공] ${streamerInfo.nickname} 저장 완료`);
-        
-        // 성공 응답
-        res.status(200).json({ success: true, data: streamerInfo });
+        if (error) throw error;
 
-    } catch (error) {
-        console.error('등록 에러:', error);
-        res.status(500).json({ error: '서버 내부 오류가 발생했습니다.' });
+        res.status(200).json({ success: true, count: results.length });
+
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
-};
+}
