@@ -93,4 +93,292 @@
                 </select>
             <button class="action-btn" onclick="addStreamer()">추가</button>
         </div>
-        <p style="font-
+        <p style="font-size:0.8rem; color:#888; text-align: center;">* 여러 그룹에 같은 사람을 추가하면 '교집합'으로 표시됩니다.</p>
+    </div>
+
+    <div id="dashboard-content"></div>
+</div>
+
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <h2 id="modal-title">방송 기록</h2>
+        <div class="calendar" id="calendar-grid"></div>
+        <div class="chart-box"><canvas id="timeChart"></canvas></div>
+    </div>
+</div>
+
+<script>
+    const ADMIN_PASSWORD = "1234"; // 🔐 관리자 비밀번호
+    let isAdmin = false;
+    let dashboardData = {
+        groups: [
+            { id: 'g_main', name: '👑 메인 그룹', members: [] },
+            { id: 'g_game', name: '🎮 게임 멤버', members: [] }
+        ],
+        ungrouped: ['bluejin0129', 'moonightwmn'] // 기본 멤버
+    };
+
+    // 1. 데이터 불러오기 (초기화)
+    function init() {
+        const saved = localStorage.getItem('myStreamerData');
+        if (saved) {
+            dashboardData = JSON.parse(saved);
+        }
+        renderDashboard();
+    }
+
+    // 2. 데이터 저장
+    function saveData() {
+        localStorage.setItem('myStreamerData', JSON.stringify(dashboardData));
+        renderDashboard();
+    }
+
+    // 3. 전체 화면 그리기 (핵심 로직)
+    function renderDashboard() {
+        const container = document.getElementById('dashboard-content');
+        container.innerHTML = ''; // 싹 비우기
+        
+        // 3-1. 그룹 렌더링
+        dashboardData.groups.forEach((group, index) => {
+            const section = createGroupSection(group, index);
+            container.appendChild(section);
+        });
+
+        // 3-2. 그룹 없는 리스트 (맨 아래)
+        if (dashboardData.ungrouped.length > 0) {
+            const ungroupedSection = createGroupSection({ id: 'g_ungrouped', name: '기타 (미분류)', members: dashboardData.ungrouped }, -1);
+            container.appendChild(ungroupedSection);
+        }
+
+        // 3-3. 관리자 모드 UI 갱신
+        updateAdminUI();
+    }
+
+    // 그룹 섹션 HTML 생성
+    function createGroupSection(group, index) {
+        const section = document.createElement('div');
+        section.className = 'group-section';
+        
+        // 컨트롤 버튼 (위, 아래, 삭제)
+        let controls = '';
+        if (index !== -1) { // 미분류 그룹이 아니면
+            controls = `
+                <div class="group-controls" style="display:${isAdmin ? 'flex' : 'none'}">
+                    <button onclick="moveGroup(${index}, -1)">▲</button>
+                    <button onclick="moveGroup(${index}, 1)">▼</button>
+                    <button onclick="deleteGroup(${index})" style="color:red;">삭제</button>
+                </div>
+            `;
+        }
+
+        section.innerHTML = `
+            <div class="group-header">
+                <span class="group-title">${group.name}</span>
+                ${controls}
+            </div>
+            <div class="grid" id="grid-${group.id}"></div>
+        `;
+
+        // 멤버 카드 채우기
+        const grid = section.querySelector('.grid');
+        if (group.members.length === 0) {
+            grid.innerHTML = '<p style="color:#aaa; font-size:0.9rem;">멤버가 없습니다.</p>';
+        } else {
+            group.members.forEach(memberId => {
+                // 카드 생성 및 데이터 요청
+                const card = createCardElement(memberId, group.id);
+                grid.appendChild(card);
+                fetchStreamerData(memberId, card);
+            });
+        }
+        return section;
+    }
+
+    // 카드 요소 만들기
+    function createCardElement(id, groupId) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.id = `card-${groupId}-${id}`; // ID 중복 방지 (그룹별로 구분)
+        
+        // 삭제 버튼 (해당 그룹에서만 삭제)
+        const delBtn = document.createElement('div');
+        delBtn.className = 'delete-btn';
+        delBtn.innerText = 'X';
+        delBtn.style.display = isAdmin ? 'block' : 'none';
+        delBtn.onclick = (e) => {
+            e.stopPropagation();
+            removeMember(id, groupId);
+        };
+
+        card.innerHTML = `
+            <div class="profile-wrapper">
+                <img src="" onerror="this.src='https://via.placeholder.com/90?text=Wait'">
+                <div class="badges">
+                    <span class="badge live">LIVE</span>
+                    <span class="badge multi" id="multi-${groupId}-${id}">🔗</span>
+                </div>
+            </div>
+            <h3>${id}</h3>
+            <p class="status-text">로딩중...</p>
+        `;
+        card.prepend(delBtn);
+        card.onclick = (e) => { if(!e.target.classList.contains('delete-btn')) openModal(id); };
+
+        // 교집합(멀티 그룹) 체크
+        checkMultiGroup(id, groupId);
+        
+        return card;
+    }
+
+    // 데이터 가져오기 (엔진 호출)
+    async function fetchStreamerData(id, card) {
+        try {
+            const res = await fetch(`/api/info?id=${id}`);
+            const data = await res.json();
+            
+            if (data.isLive) card.classList.add('is-live');
+            
+            const img = card.querySelector('img');
+            img.src = data.img || 'https://via.placeholder.com/90';
+            
+            const name = card.querySelector('h3');
+            name.innerText = data.name;
+
+            const status = card.querySelector('.status-text');
+            status.innerText = data.isLive ? '🔴 방송중' : '⚫ 오프라인';
+
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    // 🔗 교집합 확인 로직
+    function checkMultiGroup(id, currentGroupId) {
+        let count = 0;
+        // 전체 그룹을 뒤져서 이 사람이 몇 번 나오나 확인
+        dashboardData.groups.forEach(g => { if(g.members.includes(id)) count++; });
+        if(dashboardData.ungrouped.includes(id)) count++;
+
+        // 2곳 이상 속해있으면 뱃지 표시
+        if (count > 1) {
+            setTimeout(() => {
+                const badge = document.getElementById(`multi-${currentGroupId}-${id}`);
+                if(badge) badge.style.display = 'inline-block';
+            }, 100);
+        }
+    }
+
+    // --- 관리자 기능들 ---
+
+    function toggleAdmin() {
+        if (!isAdmin) {
+            if (prompt("비밀번호:") === ADMIN_PASSWORD) {
+                isAdmin = true;
+                document.getElementById('admin-panel').style.display = 'block';
+                document.querySelectorAll('.delete-btn').forEach(b => b.style.display = 'block');
+                document.querySelectorAll('.group-controls').forEach(b => b.style.display = 'flex');
+            }
+        } else {
+            isAdmin = false;
+            document.getElementById('admin-panel').style.display = 'none';
+            document.querySelectorAll('.delete-btn').forEach(b => b.style.display = 'none');
+            document.querySelectorAll('.group-controls').forEach(b => b.style.display = 'none');
+        }
+    }
+
+    // 그룹 생성
+    function addNewGroup() {
+        const name = document.getElementById('new-group-name').value;
+        if (!name) return alert('그룹 이름을 입력하세요');
+        
+        const newId = 'g_' + Date.now(); // 고유 ID 생성
+        dashboardData.groups.push({ id: newId, name: name, members: [] });
+        document.getElementById('new-group-name').value = '';
+        saveData();
+    }
+
+    // 그룹 순서 변경 (direction: -1 위로, 1 아래로)
+    function moveGroup(index, direction) {
+        const newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= dashboardData.groups.length) return;
+        
+        // 순서 바꾸기 (Swap)
+        const temp = dashboardData.groups[index];
+        dashboardData.groups[index] = dashboardData.groups[newIndex];
+        dashboardData.groups[newIndex] = temp;
+        saveData();
+    }
+
+    // 그룹 삭제
+    function deleteGroup(index) {
+        if (!confirm("그룹을 삭제하면 멤버들은 '미분류'로 이동됩니다.")) return;
+        
+        const members = dashboardData.groups[index].members;
+        // 멤버들을 미분류로 이동
+        dashboardData.ungrouped.push(...members);
+        // 그룹 삭제
+        dashboardData.groups.splice(index, 1);
+        saveData();
+    }
+
+    // 스트리머 추가
+    function addStreamer() {
+        const id = document.getElementById('new-streamer-id').value.trim();
+        const targetGroupId = document.getElementById('group-select').value;
+        
+        if (!id) return alert('아이디를 입력하세요');
+
+        // 해당 그룹 찾기
+        if (targetGroupId === 'ungrouped') {
+            if (!dashboardData.ungrouped.includes(id)) dashboardData.ungrouped.push(id);
+        } else {
+            const group = dashboardData.groups.find(g => g.id === targetGroupId);
+            if (group && !group.members.includes(id)) group.members.push(id);
+        }
+
+        document.getElementById('new-streamer-id').value = '';
+        saveData();
+    }
+
+    // 멤버 삭제
+    function removeMember(id, groupId) {
+        if (!confirm('삭제하시겠습니까?')) return;
+        
+        if (groupId === 'g_ungrouped') {
+            dashboardData.ungrouped = dashboardData.ungrouped.filter(m => m !== id);
+        } else {
+            const group = dashboardData.groups.find(g => g.id === groupId);
+            if (group) group.members = group.members.filter(m => m !== id);
+        }
+        saveData();
+    }
+
+    // 관리자 UI 업데이트 (Select 박스 채우기 등)
+    function updateAdminUI() {
+        const select = document.getElementById('group-select');
+        select.innerHTML = '';
+        
+        dashboardData.groups.forEach(g => {
+            select.innerHTML += `<option value="${g.id}">${g.name}</option>`;
+        });
+        select.innerHTML += `<option value="ungrouped">기타 (미분류)</option>`;
+    }
+
+    // 모달 관련 (기존 유지)
+    function openModal(name) {
+        document.getElementById('modal').style.display='block';
+        document.getElementById('modal-title').innerText=name;
+        // (가짜 렌더링 유지)
+        const g=document.getElementById('calendar-grid'); g.innerHTML='';
+        for(let i=0;i<30;i++)g.innerHTML+=`<div class="cal-day">${i+1}</div>`;
+        new Chart(document.getElementById('timeChart'),{type:'line',data:{labels:[1,2],datasets:[{data:[10,20]}]}});
+    }
+    function closeModal(){document.getElementById('modal').style.display='none';}
+    window.onclick=(e)=>{if(e.target==document.getElementById('modal'))closeModal();}
+
+    init();
+</script>
+
+</body>
+</html>
