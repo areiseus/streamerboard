@@ -2,12 +2,12 @@
   "groups": [
     {
       "id": "g_main",
-      "name": "👑 메인 그룹",
+      "name": "👑 유앤아이",
       "members": ["woowakgood", "inehine"]
     },
     {
       "id": "g_game",
-      "name": "🎮 게임 멤버",
+      "name": "🎮 이매방랑",
       "members": ["lilpa", "cotton1217"]
     }
   ],
