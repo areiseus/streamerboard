@@ -40,8 +40,8 @@ export default async function handler(req, res) {
                 nickname: item.nickname,
                 is_active: true,
                 last_updated_at: new Date(),
-                profile_img: null,
-                total_broadcast_time: null 
+                profile_img: item.profile_img || null,
+                total_broadcast_time: item.total_broadcast_time || null 
             };
 
             // 기본 헤더
@@ -52,31 +52,29 @@ export default async function handler(req, res) {
 
             try {
                 // ===============================================
-                // [1] SOOP (아프리카) - 2중 안전장치 적용
+                // [1] SOOP (아프리카) - 스샷 기반 헤더 보강 완료
                 // ===============================================
                 if (item.platform === 'soop') {
                     const apiUrl = `https://bjapi.afreecatv.com/api/${item.id}/station`;
                     const referer = `https://bj.afreecatv.com/${item.id}`;
 
-                    // --- [시도 1] 쿠키 넣어서 요청 ---
+                    // --- [시도 1] 쿠키 넣어서 요청 (스샷 분석 헤더 적용) ---
                     let headers1 = { 
-+                       ...commonHeaders, 
-+                       "Accept": "application/json, text/plain, */*",
-+                       "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
-+                       "Referer": referer,
-+                       "Origin": "https://bj.afreecatv.com"
-+                   };
-+                   if (soopCookieVal) headers1['Cookie'] = soopCookieVal;
+                        ...commonHeaders, 
+                        "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8",
+                        "Referer": referer,
+                        "Origin": "https://bj.afreecatv.com",
+                        "Authority": "bjapi.afreecatv.com"
+                    };
+                    if (soopCookieVal) headers1['Cookie'] = soopCookieVal;
 
-
-                    
                     let resp = await fetch(apiUrl, { headers: headers1 });
                     let success = false;
                     let json = null;
 
                     if (resp.ok) {
                         json = await resp.json();
-                        // [수정] image_profile 뿐만 아니라 profile_image도 같이 체크
+                        // profile_image 필드까지 확실히 체크
                         if (json?.station?.profile_image || json?.station?.image_profile) success = true;
                     }
 
@@ -84,25 +82,25 @@ export default async function handler(req, res) {
                     if (!success) {
                         console.log(`[SOOP 재시도] ${item.id} - 쿠키 빼고 재요청`);
                         let headers2 = { 
-+                           ...commonHeaders,
-+                           "Accept": "application/json, text/plain, */*",
-+                           "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
-+                           "Referer": referer,
-+                           "Origin": "https://bj.afreecatv.com"
-+                       };                        
+                            ...commonHeaders,
+                            "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8",
+                            "Referer": referer,
+                            "Origin": "https://bj.afreecatv.com",
+                            "Authority": "bjapi.afreecatv.com"
+                        };
                         resp = await fetch(apiUrl, { headers: headers2 });
                         if (resp.ok) json = await resp.json();
                     }
 
                     // --- 데이터 저장 ---
                     if (json && json.station) {
-                        dbData.nickname = json.station.user_nick;
+                        dbData.nickname = json.station.user_nick || dbData.nickname;
                         
                         if (json.station.total_broad_time) {
                             dbData.total_broadcast_time = json.station.total_broad_time;
                         }
 
-                        // [핵심 수정] 숲 API의 바뀐 필드명(profile_image)을 우선적으로 긁어옴
+                        // 스샷에서 확인된 stimg 서버 주소를 가져오는 로직
                         let img = json.station.profile_image || json.station.image_profile || json.station.user_image;
                         if (img) {
                             if (img.startsWith('//')) dbData.profile_img = 'https:' + img;
@@ -115,7 +113,10 @@ export default async function handler(req, res) {
                 // [2] CHZZK (치지직)
                 // ===============================================
                 else if (item.platform === 'chzzk') {
-                    let headers = { ...commonHeaders };
+                    let headers = { 
+                        ...commonHeaders,
+                        "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8"
+                    };
                     if (chzzkCookieVal) headers['Cookie'] = chzzkCookieVal;
 
                     const resp = await fetch(`https://api.chzzk.naver.com/service/v1/channels/${item.id}`, { headers });
@@ -124,8 +125,7 @@ export default async function handler(req, res) {
                         const json = await resp.json();
                         if (json && json.content) {
                             dbData.nickname = json.content.channelName;
-                            dbData.profile_img = json.content.channelImageUrl || null;
-                            dbData.total_broadcast_time = null;
+                            dbData.profile_img = json.content.channelImageUrl || dbData.profile_img;
                         }
                     }
                 }
