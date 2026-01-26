@@ -7,7 +7,6 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
     const { items } = req.body; 
-    const { id, platform } = req.body;
 
     if (!items || items.length === 0) {
         return res.status(400).json({ error: '저장할 데이터가 없습니다.' });
