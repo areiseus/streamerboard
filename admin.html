@@ -270,8 +270,12 @@
         } catch(e) { console.error(e); }
     }
 
-    async function updateFull() {
-                        <div id="debug-console" style="
+    async function updateFull() {    
+        if(!confirm('전체 갱신하시겠습니까?')) return;
+        const btn = document.querySelector('button[onclick="updateFull()"]');
+        btn.innerText = '⏳...';
+
+                                <div id="debug-console" style="
     position: fixed; 
     bottom: 10px; 
     right: 10px; 
@@ -328,10 +332,11 @@
     
     // 형님의 [모두 갱신] 버튼에 이 함수를 연결하세요.
     // 예: <button onclick="updateAllStreamers()">모두 갱신</button>
-       
-        if(!confirm('전체 갱신하시겠습니까?')) return;
-        const btn = document.querySelector('button[onclick="updateFull()"]');
-        btn.innerText = '⏳...';
+
+
+        
+
+        
         await fetch('/api/sync_full', { method:'POST' });
         alert('갱신 완료');
         btn.innerText = '🔄 [모두 갱신]';
