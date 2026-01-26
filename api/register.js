@@ -1,89 +1,108 @@
-const fs = require('fs');
-const path = require('path');
+import { createClient } from '@supabase/supabase-js';
+import fs from 'fs';
+import path from 'path';
 
-// DB 파일 위치 (api 폴더 기준 상위 폴더의 list.json)
-const DB_FILE = path.join(__dirname, '../list.json');
+const supabase = createClient(
+    process.env.streamer_db_URL,
+    process.env.streamer_db_KEY
+);
 
-module.exports = async (req, res) => {
-    // 1. 요청 데이터 받기
-    // (서버 환경에 따라 req.body를 쓰는 방식이 다를 수 있음. Express 기준)
-    const { id, platform, group_name } = req.body;
+export default async function handler(req, res) {
+    const { items } = req.body; 
 
-    if (!id || !platform) {
-        return res.status(400).json({ error: 'ID와 플랫폼을 입력해주세요.' });
+    if (!items || items.length === 0) {
+        return res.status(400).json({ error: '데이터 없음' });
     }
 
-    console.log(`[등록 시작] ${platform} - ${id}`);
-
-    // 저장할 기본 데이터 틀
-    let streamerInfo = {
-        id: id,
-        platform: platform,
-        group_name: group_name || '미분류',
-        nickname: id, // 못 가져오면 ID라도 씀
-        profile_img: '',
-        open_date: '',
-        registered_at: new Date().toISOString().split('T')[0]
-    };
+    // [설정] admin.json에서 서비스별 개인 쿠키 로드
+    let soopCookieVal = '';
+    try {
+        const filePath = path.join(process.cwd(), 'admin.json');
+        if (fs.existsSync(filePath)) {
+            const json = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+            soopCookieVal = json.img_soop_cookie || '';
+        }
+    } catch (err) { console.error('쿠키 로드 실패'); }
 
     try {
-        // 2. 플랫폼별 정보 긁어오기 (라이브러리 없이 내장 fetch 사용)
-        if (platform === 'chzzk') {
-            const url = `https://api.chzzk.naver.com/service/v1/channels/${id}`;
-            const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        const results = await Promise.all(items.map(async (item) => {
             
-            if (response.ok) {
-                const json = await response.json();
-                const content = json.content;
-                if (content) {
-                    streamerInfo.nickname = content.channelName;
-                    streamerInfo.profile_img = content.channelImageUrl;
-                    streamerInfo.open_date = content.openDate ? content.openDate.split(' ')[0] : '';
+            // [데이터 구조 정의] 기본 스트리머 정보 객체 생성
+            let dbData = {
+                id: item.id,
+                platform: item.platform,
+                group_name: item.group_name, 
+                nickname: item.nickname,
+                is_active: true,
+                last_updated_at: new Date(),
+                profile_img: item.profile_img || null,
+                total_broadcast_time: item.total_broadcast_time || null 
+            };
+
+            // [SOOP 전용 로직] 숲 플랫폼 데이터 수집 및 이미지 강제 생성
+            if (item.platform === 'soop') {
+                /** * 1. 이미지 주소 강제 생성 (이미지 긁어오지 않고 ID로 조합)
+                 * 규칙: https://stimg.sooplive.co.kr/LOGO/[ID앞2자리]/[전체ID]/m/[전체ID].webp
+                 */
+                const firstTwo = item.id.substring(0, 2);
+                dbData.profile_img = `https://stimg.sooplive.co.kr/LOGO/${firstTwo}/${item.id}/m/${item.id}.webp`;
+
+                try {
+                    // 2. 숲 스테이션 API 호출 (최신 sooplive 도메인 사용)
+                    const resp = await fetch(`https://chapi.sooplive.co.kr/api/${item.id}/station`, {
+                        headers: {
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                            "Referer": `https://ch.sooplive.co.kr/${item.id}`,
+                            "Cookie": soopCookieVal // 로그인이 필요한 데이터 접근용
+                        }
+                    });
+
+                    if (resp.ok) {
+                        const json = await resp.json();
+                        if (json && json.station) {
+                            /**
+                             * [수집 데이터 종류]
+                             * json.station.user_nick : 스트리머의 현재 닉네임
+                             * json.station.total_broad_time : 누적 방송 시간 (단위: 분)
+                             * json.station.profile_image : API가 주는 이미지 (우리는 위에서 강제로 만든걸 우선 사용)
+                             */
+                            dbData.nickname = json.station.user_nick || dbData.nickname;
+                            dbData.total_broadcast_time = json.station.total_broad_time || dbData.total_broadcast_time;
+                        }
+                    }
+                } catch (e) { 
+                    console.error(`${item.id} 정보 수집 실패 (이미지는 조합된 주소로 유지)`); 
                 }
+            } 
+            // [CHZZK 전용 로직] 치지직 플랫폼 데이터 수집
+            else if (item.platform === 'chzzk') {
+                try {
+                    const resp = await fetch(`https://api.chzzk.naver.com/service/v1/channels/${item.id}`);
+                    if (resp.ok) {
+                        const json = await resp.json();
+                        if (json && json.content) {
+                            /**
+                             * [수집 데이터 종류]
+                             * json.content.channelName : 채널 명(닉네임)
+                             * json.content.channelImageUrl : 치지직 프로필 이미지 URL
+                             */
+                            dbData.nickname = json.content.channelName;
+                            dbData.profile_img = json.content.channelImageUrl;
+                        }
+                    }
+                } catch (e) {}
             }
-        } 
-        else if (platform === 'soop') {
-            const url = `https://bjapi.afreecatv.com/api/${id}/station`;
-            const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-            
-            if (response.ok) {
-                const json = await response.json();
-                const station = json.station;
-                if (station) {
-                    streamerInfo.nickname = station.user_nick;
-                    streamerInfo.profile_img = 'https:' + station.image_profile;
-                    streamerInfo.open_date = station.station_open_date || '';
-                }
-            }
-        }
 
-        // 3. list.json 파일 읽어서 저장하기
-        let currentList = [];
-        if (fs.existsSync(DB_FILE)) {
-            const fileData = fs.readFileSync(DB_FILE, 'utf8');
-            try {
-                currentList = JSON.parse(fileData);
-            } catch (e) { currentList = []; }
-        }
+            return dbData;
+        }));
 
-        // 이미 있는 ID면 정보 갱신, 없으면 추가
-        const idx = currentList.findIndex(item => item.id === id);
-        if (idx !== -1) {
-            currentList[idx] = { ...currentList[idx], ...streamerInfo };
-        } else {
-            currentList.push(streamerInfo);
-        }
+        // [최종] 수집/생성된 데이터를 DB에 강제로 덮어쓰기(Upsert)
+        const { error } = await supabase.from('streamers').upsert(results);
+        if (error) throw error;
 
-        // 파일에 쓰기 (DB 저장)
-        fs.writeFileSync(DB_FILE, JSON.stringify(currentList, null, 2), 'utf8');
+        res.status(200).json({ success: true, count: results.length });
 
-        console.log(`[성공] ${streamerInfo.nickname} 저장 완료`);
-        
-        // 성공 응답
-        res.status(200).json({ success: true, data: streamerInfo });
-
-    } catch (error) {
-        console.error('등록 에러:', error);
-        res.status(500).json({ error: '서버 내부 오류가 발생했습니다.' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
-};
+}
