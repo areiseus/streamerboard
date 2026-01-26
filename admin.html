@@ -4,46 +4,46 @@
     <meta charset="UTF-8">
     <title>관리자 페이지</title>
     <style>
-        /* 기본 레이아웃 */
+        /* [기본 설정] */
         body { background: #222; color: #fff; padding: 20px; font-family: 'Pretendard', sans-serif; max-width: 1200px; margin: 0 auto; padding-bottom: 100px; }
         
-        /* 로그인 창 */
+        /* [로그인 화면] */
         #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .login-box { background: #333; padding: 40px; border-radius: 10px; border: 1px solid #555; text-align: center; width: 300px; }
         
-        /* ★★★ [패널 스타일] 형님이 말씀하신 그 박스 스타일입니다 ★★★ */
+        /* [패널 공통 스타일] */
         #adminContent { display: none; }
         .panel { 
             background: #333; 
             padding: 20px; 
             border-radius: 10px; 
             margin-bottom: 20px; 
-            border: 1px solid #444; /* 기본 테두리 */
+            border: 1px solid #444; 
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
         
-        /* 입력 도구 */
+        /* [입력 도구] */
         input, select { padding: 10px; background: #444; border: 1px solid #555; color: white; border-radius: 4px; margin-right: 5px; box-sizing: border-box; }
         button { cursor: pointer; border: none; border-radius: 4px; padding: 10px 15px; color: white; font-weight: bold; transition: 0.2s; }
         button:hover { opacity: 0.8; }
         
-        /* 테이블 */
+        /* [테이블] */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
         th { background: #444; padding: 10px; text-align: center; border-bottom: 2px solid #555; }
         td { border-bottom: 1px solid #555; padding: 10px; text-align: center; }
         
-        /* 뱃지 및 기타 */
+        /* [기타 스타일] */
         .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; color:black; font-weight: bold;}
         .soop { background: #42C769; } .chzzk { background: #00E59D; }
         .highlight { color: #f1c40f; font-weight: bold; }
         .step-box { border-left: 5px solid #3498db; padding-left: 15px; margin-bottom: 20px; }
         .btn-delete { background: #c0392b; font-size: 0.8rem; padding: 5px 10px; margin-left: 5px; }
 
-        /* ★★★ 로그창 내부 스타일 ★★★ */
+        /* ★★★ [로그창 내부 스타일] 고정 크기(200px) & 스크롤 ★★★ */
         #static-log-window {
-            height: 300px;            /* 높이 넉넉하게 */
-            overflow-y: scroll;       /* 스크롤바 생성 */
-            background-color: #111;   /* 더 어두운 배경 */
+            height: 200px;            /* 높이 고정 */
+            overflow-y: scroll;       /* 내용 넘치면 스크롤 */
+            background-color: #111;   /* 검은 배경 */
             padding: 15px;
             border: 1px solid #555;
             font-family: 'Courier New', monospace;
@@ -102,18 +102,16 @@
             </div>
         </div>
 
-        
         <div class="panel" style="border: 2px solid #00ff00;">
             <div style="border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 10px;">
-                <h3 style="margin:0; color: #00ff00;">🖥️ 시스템 처리 로그 (System Log)</h3>
+                <h3 style="margin:0; color: #00ff00;">🖥️ 시스템 처리 로그</h3>
             </div>
             
             <div id="static-log-window">
-                [시스템 대기중] 로그창 패널이 정상적으로 생성되었습니다.<br>
-                위의 <b>[모두 갱신]</b> 버튼을 누르면 작업 내역이 이곳에 표시됩니다.
+                [대기중] 로그창이 여기에 고정되었습니다.<br>
+                아래의 <b>[모두 갱신]</b> 버튼을 누르면 작업 내용이 이곳에 표시됩니다.
             </div>
         </div>
-        
 
         <div class="panel" style="border: 1px solid #444;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -135,7 +133,7 @@
                         </tr>
                     </thead>
                     <tbody id="dbBody">
-                        <tr><td colspan="6" style="padding: 20px; color: #999;">로딩 중...</td></tr>
+                        <tr><td colspan="6" style="padding: 20px; color: #999;">데이터 로딩 중...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -309,7 +307,7 @@
     async function updateFull() {
         if(!confirm('전체 갱신하시겠습니까?')) return;
 
-        // ★★★ 로그창 찾기 (ID: static-log-window) ★★★
+        // ★★★ 로그창 찾기 ★★★
         const logWindow = document.getElementById('static-log-window');
         const btn = document.querySelector('button[onclick="updateFull()"]');
 
