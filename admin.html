@@ -85,67 +85,7 @@
         <div class="panel">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h3>📋 DB 등록 현황 (<span id="totalCnt">0</span>명)</h3>
-                <button onclick="updateFull()" style="background:#e74c3c;">🔄 [모두 갱신]
-
-                <div id="debug-console" style="
-    position: fixed; 
-    bottom: 10px; 
-    right: 10px; 
-    width: 400px; 
-    height: 300px; 
-    background-color: rgba(0,0,0,0.9); 
-    color: #0f0; 
-    font-family: monospace; 
-    font-size: 12px; 
-    padding: 10px; 
-    overflow-y: scroll; 
-    border: 2px solid #0f0; 
-    z-index: 9999;
-    display: none;">
-    <div style="border-bottom: 1px solid #555; padding-bottom: 5px; margin-bottom: 5px;">
-        <strong>📢 실시간 로그창</strong> 
-        <button onclick="document.getElementById('debug-console').style.display='none'" style="float:right; cursor:pointer;">X</button>
-    </div>
-    <div id="log-content"></div>
-</div>
-
-<script>
-    async function updateAllStreamers() {
-        // 로그창 열기
-        const logBox = document.getElementById('debug-console');
-        const logContent = document.getElementById('log-content');
-        logBox.style.display = 'block';
-        logContent.innerHTML = "🔄 서버에 요청 중입니다... 잠시만 기다려주세요...<br>";
-
-        try {
-            // 형님의 기존 갱신 주소 호출 (sync_full 대신 register_batch를 바로 불러도 됩니다)
-            // 여기서는 리모컨 역할을 하는 sync_full을 호출한다고 가정합니다.
-            const response = await fetch('/api/sync_full'); // 혹은 register_batch
-            const result = await response.json();
-
-            // [핵심] 서버에서 받아온 로그를 화면에 뿌리기
-            if (result.logs && Array.isArray(result.logs)) {
-                logContent.innerHTML = ""; // 초기화
-                result.logs.forEach(msg => {
-                    // 보기 좋게 줄바꿈 처리
-                    logContent.innerHTML += `<div>${msg}</div>`;
-                });
-                // 스크롤 맨 아래로
-                logBox.scrollTop = logBox.scrollHeight;
-            } else {
-                logContent.innerHTML += "<br>⚠️ 서버에서 로그가 오지 않았습니다. (성공 메시지만 옴)";
-            }
-
-        } catch (error) {
-            logContent.innerHTML += `<br>❌ 통신 에러 발생: ${error.message}`;
-        }
-    }
-
-    
-    // 형님의 [모두 갱신] 버튼에 이 함수를 연결하세요.
-    // 예: <button onclick="updateAllStreamers()">모두 갱신</button>
-</script>
-</button>
+                <button onclick="updateFull()" style="background:#e74c3c;">🔄 [모두 갱신]</button>
                 
             </div>
             <table>
@@ -331,6 +271,64 @@
     }
 
     async function updateFull() {
+                        <div id="debug-console" style="
+    position: fixed; 
+    bottom: 10px; 
+    right: 10px; 
+    width: 400px; 
+    height: 300px; 
+    background-color: rgba(0,0,0,0.9); 
+    color: #0f0; 
+    font-family: monospace; 
+    font-size: 12px; 
+    padding: 10px; 
+    overflow-y: scroll; 
+    border: 2px solid #0f0; 
+    z-index: 9999;
+    display: none;">
+    <div style="border-bottom: 1px solid #555; padding-bottom: 5px; margin-bottom: 5px;">
+        <strong>📢 실시간 로그창</strong> 
+        <button onclick="document.getElementById('debug-console').style.display='none'" style="float:right; cursor:pointer;">X</button>
+    </div>
+    <div id="log-content"></div>
+</div>
+
+<script>
+    async function updateAllStreamers() {
+        // 로그창 열기
+        const logBox = document.getElementById('debug-console');
+        const logContent = document.getElementById('log-content');
+        logBox.style.display = 'block';
+        logContent.innerHTML = "🔄 서버에 요청 중입니다... 잠시만 기다려주세요...<br>";
+
+        try {
+            // 형님의 기존 갱신 주소 호출 (sync_full 대신 register_batch를 바로 불러도 됩니다)
+            // 여기서는 리모컨 역할을 하는 sync_full을 호출한다고 가정합니다.
+            const response = await fetch('/api/sync_full'); // 혹은 register_batch
+            const result = await response.json();
+
+            // [핵심] 서버에서 받아온 로그를 화면에 뿌리기
+            if (result.logs && Array.isArray(result.logs)) {
+                logContent.innerHTML = ""; // 초기화
+                result.logs.forEach(msg => {
+                    // 보기 좋게 줄바꿈 처리
+                    logContent.innerHTML += `<div>${msg}</div>`;
+                });
+                // 스크롤 맨 아래로
+                logBox.scrollTop = logBox.scrollHeight;
+            } else {
+                logContent.innerHTML += "<br>⚠️ 서버에서 로그가 오지 않았습니다. (성공 메시지만 옴)";
+            }
+
+        } catch (error) {
+            logContent.innerHTML += `<br>❌ 통신 에러 발생: ${error.message}`;
+        }
+    }
+
+    
+    // 형님의 [모두 갱신] 버튼에 이 함수를 연결하세요.
+    // 예: <button onclick="updateAllStreamers()">모두 갱신</button>
+       
         if(!confirm('전체 갱신하시겠습니까?')) return;
         const btn = document.querySelector('button[onclick="updateFull()"]');
         btn.innerText = '⏳...';
