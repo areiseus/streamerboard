@@ -2,161 +2,134 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>관리자 페이지</title>
+    <title>DB 관리자</title>
     <style>
-        body { background: #222; color: #fff; padding: 20px; font-family: sans-serif; max-width: 800px; margin: 0 auto; }
-        
-        /* 버튼 스타일 */
-        .btn-save { width: 100%; background: #00cec9; font-weight: bold; font-size: 1.2rem; cursor: pointer; padding: 15px; border: none; margin-bottom: 20px; border-radius: 8px; }
-        .btn-save:hover { background: #00b5b0; }
-        .btn-save:disabled { background: #777; cursor: not-allowed; }
-
-        input, select, button { padding: 10px; margin: 5px; border-radius: 5px; border: none; }
-        input { background: #444; color: white; border: 1px solid #555; }
-        
-        .group-box { background: #333; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #444; }
-        .member-row { background: #444; padding: 8px 10px; margin-top: 5px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #555; }
-        .badge { padding: 3px 6px; border-radius: 3px; font-size: 0.8rem; margin-right: 5px; color: #000; font-weight: bold; }
+        body { background: #222; color: #fff; padding: 20px; font-family: sans-serif; max-width: 900px; margin: 0 auto; }
+        button { cursor: pointer; border: none; border-radius: 5px; font-weight: bold; padding: 10px 15px; margin: 5px; }
+        input, select { padding: 10px; background: #444; border: 1px solid #555; color: white; border-radius: 5px; }
+        .list-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .list-table th { background: #444; padding: 10px; text-align: left; }
+        .list-table td { border-bottom: 1px solid #555; padding: 10px; }
+        .badge { padding: 3px 6px; border-radius: 3px; font-size: 0.8rem; font-weight: bold; color:black; }
         .soop { background: #42C769; } .chzzk { background: #00E59D; }
     </style>
 </head>
 <body>
 
-    <h2 style="text-align:center">🛠️ UI 배치 관리자</h2>
-    <div style="text-align:center; margin-bottom:20px">
-        <a href="index.html" style="color:#aaa; text-decoration:none;">🏠 메인 화면 확인하기</a>
-    </div>
+    <h2 style="text-align:center">🛠️ 스트리머 DB 관리</h2>
 
-    <button onclick="saveAndSync()" class="btn-save" id="saveBtn">💾 배치 저장하기 (DB 자동 동기화)</button>
-
-    <div style="text-align:center; background:#111; padding:15px; margin-bottom:20px; border-radius:10px;">
-        <input type="text" id="gName" placeholder="새 그룹 이름">
-        <button onclick="addGroup()" style="background:#6c5ce7; color:white">그룹 생성</button>
-        <hr style="border-color:#333; margin:15px 0;">
+    <div style="background: #333; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 30px;">
+        <h3>➕ 스트리머 등록 / 그룹 수정</h3>
         
         <select id="pf">
             <option value="soop">🌲 숲 (SOOP)</option>
             <option value="chzzk">⚡ 치지직 (CHZZK)</option>
         </select>
-        <input type="text" id="mId" placeholder="아이디 (UID)">
-        <select id="targetG"></select>
-        <button onclick="addMember()" style="background:#0984e3; color:white">멤버 추가</button>
+        <input type="text" id="mId" placeholder="스트리머 ID (UID)">
+        
+        <input type="text" id="gName" placeholder="그룹명 (예: 왁타버스)" list="groupList">
+        <datalist id="groupList"></datalist>
+
+        <button onclick="saveStreamer()" style="background:#0984e3; color:white">💾 저장 (DB등록 + 정보수집)</button>
     </div>
 
-    <div id="preview"></div>
+    <h3>📋 등록된 목록 (<span id="totalCnt">0</span>명)</h3>
+    <button onclick="updateAll()" style="background:#e17055; color:white;">⚡ 전체 정보 갱신 (오래 걸림)</button>
+    
+    <table class="list-table">
+        <thead>
+            <tr>
+                <th>그룹</th>
+                <th>플랫폼</th>
+                <th>ID</th>
+                <th>닉네임</th>
+                <th>삭제</th>
+            </tr>
+        </thead>
+        <tbody id="listBody"></tbody>
+    </table>
 
 <script>
-    // 🔥 [필수 수정] 본인의 Supabase 프로젝트 주소를 입력하세요!
-    const SUPABASE_URL = "https://fnasnyvtbifgpmxplkkd.supabase.co"; 
-    
-    // 파일 경로 (Storage -> configs -> list.json)
-    const LIST_URL = `${SUPABASE_URL}/storage/v1/object/public/configs/list.json`;
-    
-    let uiData = { groups: [] };
+    let currentList = [];
 
-    // 1. 시작하면 현재 저장된 list.json 파일을 불러옵니다.
-    async function init() {
-        try {
-            const res = await fetch(LIST_URL + '?t=' + Date.now());
-            if(res.ok) {
-                uiData = await res.json();
-                render();
-            }
-        } catch(e) { console.log("기존 설정 파일이 없습니다. 새로 만듭니다."); }
-    }
+    // 1. 목록 불러오기 (api/get_list.js 사용)
+    async function loadList() {
+        const res = await fetch('/api/get_list'); 
+        const data = await res.json();
+        currentList = data;
+        
+        const tbody = document.getElementById('listBody');
+        const dlist = document.getElementById('groupList');
+        document.getElementById('totalCnt').innerText = data.length;
+        tbody.innerHTML = '';
+        dlist.innerHTML = '';
 
-    // 2. [저장] 버튼 클릭 시 동작
-    async function saveAndSync() {
-        const btn = document.getElementById('saveBtn');
-        const originalText = btn.innerText;
-        btn.innerText = "⏳ 저장 및 DB 수집 중...";
-        btn.disabled = true;
+        // 그룹명 자동완성 리스트 생성
+        const groups = [...new Set(data.map(d => d.group_name).filter(Boolean))];
+        groups.forEach(g => dlist.innerHTML += `<option value="${g}">`);
 
-        try {
-            // [단계 A] list.json 파일로 저장 (UI 배치 저장)
-            await fetch('/api/save_list', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(uiData)
-            });
+        // 그룹별 정렬
+        data.sort((a,b) => (a.group_name || 'zz').localeCompare(b.group_name || 'zz'));
 
-            // [단계 B] DB 동기화 요청 (ID 목록을 던져서 닉네임/프사 수집 시킴)
-            let allMembers = [];
-            uiData.groups.forEach(g => allMembers.push(...g.members));
-            
-            await fetch('/api/sync', {
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ items: allMembers })
-            });
-
-            alert("✅ 저장 완료!\n1. 화면 배치가 저장되었습니다.\n2. DB가 최신 프로필 정보를 수집했습니다.");
-
-        } catch(e) { 
-            alert("❌ 에러 발생: " + e.message); 
-        } finally {
-            btn.innerText = originalText;
-            btn.disabled = false;
-        }
-    }
-
-    // --- 화면 그리기 (렌더링) ---
-    function render() {
-        const div = document.getElementById('preview');
-        const sel = document.getElementById('targetG');
-        div.innerHTML = ''; sel.innerHTML = '';
-
-        uiData.groups.forEach((g, i) => {
-            // 그룹 선택 박스 업데이트
-            sel.innerHTML += `<option value="${i}">${g.name}</option>`;
-            
-            // 멤버 리스트 HTML 생성
-            let mHtml = g.members.map((m, mi) => 
-                `<div class="member-row">
-                    <span>
-                        <span class="badge ${m.platform}">${m.platform==='chzzk'?'C':'S'}</span>
-                        <b>${m.id}</b>
-                    </span>
-                    <button onclick="delMem(${i},${mi})" style="background:#ff7675; color:white; font-size:0.8rem; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">X</button>
-                </div>`
-            ).join('');
-            
-            // 그룹 박스 HTML 생성
-            div.innerHTML += `
-                <div class="group-box">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                        <h3 style="margin:0">${g.name}</h3>
-                        <button onclick="delGrp(${i})" style="background:#d63031; color:white; font-size:0.8rem; border:none; padding:5px; border-radius:4px; cursor:pointer;">그룹삭제</button>
-                    </div>
-                    ${mHtml}
-                </div>`;
+        data.forEach(m => {
+            const pfClass = m.platform === 'chzzk' ? 'chzzk' : 'soop';
+            tbody.innerHTML += `
+                <tr>
+                    <td style="color:#fdcb6e; font-weight:bold">${m.group_name || '미분류'}</td>
+                    <td><span class="badge ${pfClass}">${m.platform}</span></td>
+                    <td>${m.id}</td>
+                    <td>${m.nickname || '-'}</td>
+                    <td><button onclick="alert('DB 삭제 API 필요')" style="background:#d63031; color:white; font-size:0.8rem;">삭제</button></td>
+                </tr>
+            `;
         });
     }
 
-    // --- 데이터 조작 (메모리 상에서만 수정) ---
-    function addGroup() { 
-        const n = document.getElementById('gName').value;
-        if(!n) return;
-        uiData.groups.push({ name: n, members: [] }); 
-        document.getElementById('gName').value=''; render(); 
-    }
-    
-    function addMember() { 
+    // 2. 저장/수정 (api/sync.js 사용)
+    async function saveStreamer() {
         const id = document.getElementById('mId').value;
-        if(!id) return alert("아이디를 입력하세요");
-        
-        // 닉네임 입력칸 없음! ID랑 플랫폼만 저장함.
-        uiData.groups[document.getElementById('targetG').value].members.push({
-            id: id,
-            platform: document.getElementById('pf').value
-        }); 
-        document.getElementById('mId').value = ''; render(); 
-    }
-    
-    function delMem(g, m) { uiData.groups[g].members.splice(m, 1); render(); }
-    function delGrp(g) { uiData.groups.splice(g, 1); render(); }
+        const pf = document.getElementById('pf').value;
+        const group = document.getElementById('gName').value;
 
-    init();
+        if(!id || !group) return alert("아이디와 그룹명을 입력하세요.");
+
+        const btn = document.querySelector('button[onclick="saveStreamer()"]');
+        btn.innerText = "⏳ 저장 중...";
+        
+        // sync API에 '그룹명'까지 담아서 보냄 -> DB에 그룹명 저장됨 + 크롤링 실행됨
+        await fetch('/api/sync', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ items: [{ id, platform: pf, group_name: group }] })
+        });
+
+        alert("✅ 저장 완료!");
+        document.getElementById('mId').value = '';
+        btn.innerText = "💾 저장 (DB등록 + 정보수집)";
+        loadList();
+    }
+
+    // 3. 전체 갱신 (api/sync.js 재활용)
+    async function updateAll() {
+        if(!confirm("모든 스트리머의 정보를 새로 긁어옵니까?")) return;
+        
+        // 현재 목록에 있는 ID들만 추려서 보냄 (그룹명은 유지해야 하니 같이 보냄)
+        const items = currentList.map(m => ({ 
+            id: m.id, 
+            platform: m.platform, 
+            group_name: m.group_name // 이거 안 보내면 그룹명 날아갈 수도 있으니 주의 
+        }));
+
+        await fetch('/api/sync', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ items })
+        });
+        
+        alert("✅ 전체 갱신 완료");
+        loadList();
+    }
+
+    loadList();
 </script>
 </body>
 </html>
