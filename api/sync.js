@@ -4,8 +4,8 @@ import * as cheerio from 'cheerio';
 
 // 1. Supabase 접속 설정
 const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY
+    process.env.streamer_db_URL,
+    process.env.streamer_db_KEY
 );
 
 export default async function handler(req, res) {
