@@ -27,4 +27,237 @@
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
         
         .card { 
-            position:
+            position: relative; /* 삭제 버튼 위치 잡기 위해 */
+            background: var(--card); border-radius: 20px; padding: 25px 15px; text-align: center; 
+            cursor: pointer; transition: all 0.3s ease; border: 1px solid transparent;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        .card:hover { transform: translateY(-5px); border-color: var(--primary); }
+        
+        /* 삭제 버튼 (관리자 모드에서만 보임) */
+        .delete-btn {
+            display: none; position: absolute; top: 10px; right: 10px;
+            width: 24px; height: 24px; background: #ff4757; color: white;
+            border-radius: 50%; text-align: center; line-height: 22px;
+            font-size: 14px; cursor: pointer; z-index: 10;
+        }
+        .card.is-live { border-color: #ff4757; }
+        .card.is-live .live-badge { display: block; }
+        
+        .profile-wrapper { position: relative; width: 90px; height: 90px; margin: 0 auto 15px; }
+        .card img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid #eee; background: #eee;}
+        .card.is-live img { border-color: #ff4757; }
+        
+        .live-badge { display: none; position: absolute; bottom: 0; right: 0; background: #ff4757; color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: bold; border: 2px solid white; }
+        .card h3 { margin: 10px 0 5px; font-size: 1.1rem; color: #333; }
+        .status-text { font-size: 0.85rem; color: #888; }
+        .card.is-live .status-text { color: #ff4757; font-weight: bold; }
+
+        /* 모달 스타일 */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; backdrop-filter: blur(3px); }
+        .modal-content { background: white; margin: 5vh auto; padding: 30px; width: 90%; max-width: 600px; border-radius: 20px; max-height: 90vh; overflow-y: auto; }
+        .close-btn { float: right; font-size: 2rem; cursor: pointer; color: #999; }
+        
+        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 20px; }
+        .cal-head { font-weight: bold; text-align: center; color: #747d8c; padding: 5px 0; }
+        .cal-day { aspect-ratio: 1; border: 1px solid #f0f0f0; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 0.9rem; position: relative; }
+        .cal-day.has-vod { background-color: #e3fcf0; border-color: var(--primary); color: var(--primary); font-weight: bold; }
+        .chart-box { margin-top: 30px; height: 250px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Streamer Board</h1>
+        <p>실시간 방송 현황</p>
+        <button class="admin-btn" onclick="toggleAdmin()">⚙️ 설정</button>
+    </header>
+
+    <div id="admin-panel">
+        <h3>스트리머 추가</h3>
+        <div class="input-group">
+            <input type="text" id="new-id" placeholder="추가할 BJ ID 입력 (예: woowakgood)">
+            <button class="action-btn" onclick="addStreamer()">추가</button>
+        </div>
+        <p style="font-size:0.8rem; color:#888; margin-top:10px;">* ID는 방송국 주소 맨 뒤의 영문입니다.</p>
+    </div>
+
+    <div id="card-list" class="grid"></div>
+</div>
+
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <h2 id="modal-title">방송 기록</h2>
+        <div class="calendar" id="calendar-grid"></div>
+        <div class="chart-box"><canvas id="timeChart"></canvas></div>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // 🔐 비밀번호 설정 (원하는 비번으로 바꾸세요!)
+    const ADMIN_PASSWORD = "1234"; 
+    // ==========================================
+
+    const list = document.getElementById('card-list');
+    let isAdmin = false;
+
+    // 1. 저장된 목록 불러오기 (없으면 기본값 사용)
+    function getSavedList() {
+        const saved = localStorage.getItem('myStreamerList');
+        if (saved) {
+            return JSON.parse(saved);
+        } else {
+            // 처음 실행 시 기본 목록
+            return ['bluejin0129', 'moonightwmn']; 
+        }
+    }
+
+    // 2. 초기 실행
+    async function init() {
+        list.innerHTML = ''; 
+        const targetIds = getSavedList();
+
+        if(targetIds.length === 0) {
+            list.innerHTML = '<p style="text-align:center; width:100%;">등록된 스트리머가 없습니다.</p>';
+            return;
+        }
+        
+        for (const id of targetIds) {
+            createCard(id); // 카드 뼈대 생성
+            fetchData(id);  // 데이터 요청
+        }
+    }
+
+    // 카드 생성 함수
+    function createCard(id) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.id = `card-${id}`;
+        card.innerHTML = `
+            <div class="delete-btn" onclick="removeStreamer(event, '${id}')">X</div>
+            <div class="profile-wrapper" style="background:#eee; border-radius:50%"></div>
+            <h3>${id}</h3>
+            <p class="status-text">로딩중...</p>
+        `;
+        card.onclick = (e) => {
+            // 삭제 버튼 누를 땐 모달 안 열리게 방지
+            if (!e.target.classList.contains('delete-btn')) openModal(id);
+        };
+        list.appendChild(card);
+    }
+
+    // 데이터 가져오기
+    async function fetchData(id) {
+        const cardElement = document.getElementById(`card-${id}`);
+        if(!cardElement) return;
+
+        try {
+            const res = await fetch(`/api/info?id=${id}`);
+            const data = await res.json();
+            
+            if (data.isLive) cardElement.classList.add('is-live');
+            
+            // 기존의 삭제 버튼은 유지하면서 내용 업데이트
+            const delBtn = `<div class="delete-btn" onclick="removeStreamer(event, '${id}')" style="display:${isAdmin ? 'block' : 'none'}">X</div>`;
+            
+            cardElement.innerHTML = `
+                ${delBtn}
+                <div class="profile-wrapper">
+                    <img src="${data.img}" onerror="this.src='https://via.placeholder.com/90'">
+                    <span class="live-badge">LIVE</span>
+                </div>
+                <h3>${data.name}</h3>
+                <p class="status-text">${data.isLive ? '🔴 방송중' : '⚫ 오프라인'}</p>
+            `;
+        } catch (err) {
+            // 에러 나도 카드는 유지
+            console.error(err);
+        }
+    }
+
+    // --- 관리자 기능 ---
+
+    // 관리자 모드 켜기/끄기
+    function toggleAdmin() {
+        if (!isAdmin) {
+            const pw = prompt("관리자 비밀번호를 입력하세요:");
+            if (pw === ADMIN_PASSWORD) {
+                isAdmin = true;
+                document.getElementById('admin-panel').style.display = 'block';
+                document.querySelectorAll('.delete-btn').forEach(btn => btn.style.display = 'block');
+                alert("관리자 모드 접속 완료! 카드를 추가하거나 삭제할 수 있습니다.");
+            } else {
+                alert("비밀번호가 틀렸습니다.");
+            }
+        } else {
+            isAdmin = false;
+            document.getElementById('admin-panel').style.display = 'none';
+            document.querySelectorAll('.delete-btn').forEach(btn => btn.style.display = 'none');
+        }
+    }
+
+    // 스트리머 추가
+    function addStreamer() {
+        const input = document.getElementById('new-id');
+        const newId = input.value.trim();
+        
+        if (!newId) return alert("ID를 입력해주세요.");
+        
+        const currentList = getSavedList();
+        if (currentList.includes(newId)) return alert("이미 등록된 ID입니다.");
+
+        // 리스트에 추가하고 저장
+        currentList.push(newId);
+        localStorage.setItem('myStreamerList', JSON.stringify(currentList));
+        
+        // 화면에 바로 반영
+        input.value = '';
+        createCard(newId);
+        fetchData(newId);
+        
+        // 관리자 모드니까 삭제 버튼 바로 보이게
+        setTimeout(() => {
+            const btn = document.querySelector(`#card-${newId} .delete-btn`);
+            if(btn) btn.style.display = 'block';
+        }, 100);
+    }
+
+    // 스트리머 삭제
+    function removeStreamer(e, id) {
+        e.stopPropagation(); // 카드 클릭(모달 열기) 방지
+        if (!confirm(`정말 '${id}'님을 목록에서 삭제할까요?`)) return;
+
+        let currentList = getSavedList();
+        currentList = currentList.filter(item => item !== id);
+        localStorage.setItem('myStreamerList', JSON.stringify(currentList));
+
+        // 화면에서 제거
+        const card = document.getElementById(`card-${id}`);
+        if(card) card.remove();
+    }
+
+    // 모달 및 기타 (기존 유지)
+    function openModal(name) {
+        document.getElementById('modal').style.display = 'block';
+        document.getElementById('modal-title').innerText = `${name}님의 기록`;
+        renderCalendar(); renderChart();
+    }
+    function closeModal() { document.getElementById('modal').style.display = 'none'; }
+    function renderCalendar() { /* 달력 렌더링 (생략 - 기존 유지) */ 
+        const grid = document.getElementById('calendar-grid'); grid.innerHTML=''; 
+        for(let i=0; i<31; i++) grid.innerHTML+=`<div class="cal-day">${i+1}</div>`; 
+    }
+    function renderChart() { 
+        const ctx = document.getElementById('timeChart');
+        new Chart(ctx, { type:'line', data:{labels:[1,2,3], datasets:[{label:'Time', data:[10,20,15]}]} });
+    }
+    window.onclick = (e) => { if(e.target == document.getElementById('modal')) closeModal(); }
+
+    init();
+</script>
+
+</body>
+</html>
