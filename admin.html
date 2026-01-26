@@ -81,62 +81,46 @@
             </div>
         </div>
 
-        <div class="panel">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h3>📋 DB 등록 현황 (<span id="totalCnt">0</span>명)</h3>
-                <button onclick="updateFull()" style="background:#e74c3c;">🔄 [모두 갱신]</button>
-                
+        <div style="background: #2b2b2b; border: 1px solid #444; border-radius: 8px; padding: 20px; margin-top: 20px; color: #fff;">
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">
+                <h3 style="margin: 0; font-size: 18px; color: #eee;">📊 DB 등록 현황 (<span id="totalCnt">0</span>명)</h3>
+                <button onclick="updateFull()" style="background-color: #d9534f; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                    🔄 [모두 갱신]
+                </button>
             </div>
-            <table>
-                <thead>
-                    <tr><th>그룹명</th><th>플랫폼</th><th>ID</th><th>닉네임</th><th>총 방송 시간</th><th>상태 / 관리</th></tr>
-                </thead>
-                <tbody id="dbBody"></tbody>
-            </table>
+
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px; text-align: center;">
+                    <thead>
+                        <tr style="background-color: #333; color: #ccc;">
+                            <th style="padding: 10px; border-bottom: 2px solid #555;">그룹명</th>
+                            <th style="padding: 10px; border-bottom: 2px solid #555;">플랫폼</th>
+                            <th style="padding: 10px; border-bottom: 2px solid #555;">ID</th>
+                            <th style="padding: 10px; border-bottom: 2px solid #555;">닉네임</th>
+                            <th style="padding: 10px; border-bottom: 2px solid #555;">총 방송 시간</th>
+                            <th style="padding: 10px; border-bottom: 2px solid #555;">상태 / 관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dbBody">
+                        <tr>
+                            <td colspan="6" style="padding: 20px; color: #999;">데이터 로딩 중...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="margin-top: 20px; background-color: #000; border: 1px solid #00ff00; border-radius: 4px; padding: 10px;">
+                <div style="color: #00ff00; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 5px; font-size: 13px;">
+                    🖥️ 실시간 갱신 로그 (Processing Log)
+                </div>
+                <div id="static-log-window" style="height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; color: #ddd; line-height: 1.6;">
+                    대기 중... [모두 갱신] 버튼을 누르면 여기에 로그가 출력됩니다.
+                </div>
+            </div>
+
         </div>
     </div>
-
-<div style="background: #2b2b2b; border: 1px solid #444; border-radius: 8px; padding: 20px; margin-top: 20px; color: #fff;">
-    
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">
-        <h3 style="margin: 0; font-size: 18px; color: #eee;">📊 DB 등록 현황</h3>
-        <button onclick="updateFull()" style="background-color: #d9534f; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">
-            🔄 [모두 갱신]
-        </button>
-    </div>
-
-    <div style="overflow-x: auto;">
-        <table style="width: 100%; border-collapse: collapse; font-size: 14px; text-align: center;">
-            <thead>
-                <tr style="background-color: #333; color: #ccc;">
-                    <th style="padding: 10px; border-bottom: 2px solid #555;">그룹명</th>
-                    <th style="padding: 10px; border-bottom: 2px solid #555;">플랫폼</th>
-                    <th style="padding: 10px; border-bottom: 2px solid #555;">ID</th>
-                    <th style="padding: 10px; border-bottom: 2px solid #555;">닉네임</th>
-                    <th style="padding: 10px; border-bottom: 2px solid #555;">총 방송 시간</th>
-                    <th style="padding: 10px; border-bottom: 2px solid #555;">상태 / 관리</th>
-                </tr>
-            </thead>
-            <tbody id="streamer-list-body">
-                <tr>
-                    <td colspan="6" style="padding: 20px; color: #999;">데이터 로딩 중...</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
-    <div style="margin-top: 20px; background-color: #000; border: 1px solid #00ff00; border-radius: 4px; padding: 10px;">
-        <div style="color: #00ff00; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 5px; font-size: 13px;">
-            🖥️ 실시간 갱신 로그 (Processing Log)
-        </div>
-        <div id="static-log-window" style="height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; color: #ddd; line-height: 1.6;">
-            대기 중... [모두 갱신] 버튼을 누르면 여기에 로그가 출력됩니다.
-        </div>
-    </div>
-
-</div>
-</div>
-    
     
 <script>
     let draftList = []; 
@@ -241,128 +225,3 @@
         draftList.splice(idx, 1);
         renderDraft();
     }
-
-    // 4. 저장 (배치 등록)
-    async function saveBatch() {
-        if(draftList.length === 0) return alert('목록이 비었습니다.');
-        const btn = document.querySelector('button[onclick="saveBatch()"]');
-        btn.innerText = '⏳ 저장 중...'; btn.disabled = true;
-
-        try {
-            const res = await fetch('/api/register_batch', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ items: draftList })
-            });
-            const result = await res.json();
-            if(res.ok) {
-                alert(`✅ ${result.count}명 저장 완료!`);
-                draftList = []; renderDraft(); loadDBList(); 
-            } else { throw new Error(result.error || '저장 실패'); }
-        } catch(e) { alert('오류: ' + e.message); }
-        btn.innerText = '💾 [최초 등록] 실행'; btn.disabled = false;
-    }
-
-    // [추가] 5. 스트리머 삭제 함수
-    async function deleteStreamer(id) {
-        if(!confirm('정말 이 스트리머를 DB에서 삭제하시겠습니까?')) return;
-        
-        try {
-            const res = await fetch('/api/delete_streamer', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ id: id })
-            });
-            
-            if(res.ok) {
-                alert('삭제되었습니다.');
-                loadDBList(); // 목록 새로고침
-            } else {
-                const err = await res.json();
-                alert('삭제 실패: ' + err.error);
-            }
-        } catch(e) {
-            alert('삭제 오류: ' + e.message);
-        }
-    }
-
-    // 6. DB 목록 로드
-    async function loadDBList() {
-        try {
-            const res = await fetch('/api/get_list');
-            const data = await res.json();
-            data.forEach(m => { if(m.group_name) groupSet.add(m.group_name); });
-            renderGroups();
-            document.getElementById('totalCnt').innerText = data.length;
-            
-            // [변경] 테이블 렌더링 (총 방송 시간 + 삭제 버튼)
-            document.getElementById('dbBody').innerHTML = data.map(m => `
-                <tr>
-                    <td style="color:#f1c40f;">${m.group_name || '-'}</td>
-                    <td><span class="badge ${m.platform}">${m.platform}</span></td>
-                    <td>${m.id}</td>
-                    <td>${m.nickname}</td>
-                    <td style="font-size:0.8rem; color:#aaa;">${m.total_broadcast_time || '-'}</td>
-                    <td>
-                        ${m.is_active ? '✅' : '🚫'}
-                        <button class="btn-delete" onclick="deleteStreamer('${m.id}')">삭제</button>
-                    </td>
-                </tr>
-            `).join('');
-        } catch(e) { console.error(e); }
-    }
-
-async function updateFull() {
-    if(!confirm('전체 갱신하시겠습니까?')) return;
-
-    // 1. 요소 찾기
-    const logWindow = document.getElementById('static-log-window');
-    const btn = document.querySelector('button[onclick="updateFull()"]');
-
-    // 2. 로그창 초기화
-    if(logWindow) {
-        logWindow.innerHTML = "🔄 [1/3] 서버 통신 준비...<br>";
-        logWindow.scrollTop = logWindow.scrollHeight;
-    }
-    if(btn) btn.innerText = '⏳...';
-
-    try {
-        // 3. API 호출
-        const res = await fetch('/api/register_batch', { 
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ items: [] }) 
-        });
-        const json = await res.json();
-
-        // 4. 로그 출력
-        if(logWindow) {
-            if (json.logs && Array.isArray(json.logs)) {
-                logWindow.innerHTML = ""; // 초기화
-                json.logs.forEach(msg => {
-                    let style = "color: #ccc;"; // 기본 회색
-                    
-                    if(msg.includes('에러') || msg.includes('실패')) style = "color: #ff4444; font-weight: bold;";
-                    else if(msg.includes('성공')) style = "color: #00ff00;";
-                    else if(msg.includes('주소')) style = "color: #ffff00;"; // 주소는 노란색
-                    else if(msg.includes('SOOP')) style = "color: #00ffff;"; // SOOP은 하늘색
-
-                    logWindow.innerHTML += `<div style="${style}">${msg}</div>`;
-                });
-                logWindow.innerHTML += "<br>✅ <strong>작업 완료</strong>";
-            } else {
-                logWindow.innerHTML += `<br>⚠️ 로그 없음: ${JSON.stringify(json)}`;
-            }
-            logWindow.scrollTop = logWindow.scrollHeight; // 자동 스크롤
-        }
-
-    } catch (e) {
-        if(logWindow) logWindow.innerHTML += `<br>❌ [에러] ${e.message}`;
-    } finally {
-        if(btn) btn.innerText = '🔄 [모두 갱신]';
-        // loadDBList(); // 목록 새로고침 함수가 있다면 주석 해제
-    }
-}
-
-</script>    
-</body>
-</html>
