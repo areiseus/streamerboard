@@ -1,122 +1,93 @@
 import { createClient } from '@supabase/supabase-js';
-import fs from 'fs';
-import path from 'path';
 
-// 1. DB 연결 확인
-const supabaseUrl = process.env.streamer_db_URL;
-const supabaseKey = process.env.streamer_db_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-    console.error(" [치명적 오류] 환경변수(DB URL/KEY)가 없습니다!");
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(
+    process.env.streamer_db_URL,
+    process.env.streamer_db_KEY
+);
 
 export default async function handler(req, res) {
-    console.log("=== [1] 배치 작업 시작 ===");
-    
     const { items } = req.body; 
 
     if (!items || items.length === 0) {
-        console.error(" [오류] 받아온 데이터가 없습니다 (items is empty)");
-        return res.status(400).json({ error: '보낼 데이터가 없습니다.' });
+        return res.status(400).json({ error: '데이터 없음' });
     }
 
-    // 쿠키 로드 (생략 가능하지만 에러 방지용으로 둠)
-    let soopCookieVal = '';
     try {
-        const filePath = path.join(process.cwd(), 'admin.json');
-        if (fs.existsSync(filePath)) {
-            const json = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-            soopCookieVal = json.img_soop_cookie || '';
-        }
-    } catch (err) {}
+        console.log(`=== [진단 시작] 총 ${items.length}명 데이터 처리 시작 ===`);
 
-    try {
-        // 2. 쏠 데이터 준비
-        console.log(`=== [2] ${items.length}개 데이터 가공 시작 ===`);
-        
-        const results = await Promise.all(items.map(async (item) => {
+        const results = items.map((item) => {
+            // 1. 공백 제거 및 소문자 변환 (오동작 방지)
+            const platform = item.platform ? item.platform.trim().toLowerCase() : '';
+            const id = item.id ? item.id.trim() : '';
+
+            // 2. SOOP URL 강제 생성
+            // ID가 없으면 'unknown'이라고 박아서 주소가 깨지는지 확인
+            const safeId = id || 'unknown'; 
+            const firstTwo = safeId.length >= 2 ? safeId.substring(0, 2) : 'xx';
+            const forcedSoopImg = `https://stimg.sooplive.co.kr/LOGO/${firstTwo}/${safeId}/m/${safeId}.webp`;
+
+            // 3. SOOP 여부 판단
+            const isSoop = platform.includes('soop') || platform.includes('afreeca');
+
+            // [요청하신 부분 1] 할당 직전 URL과 판단 결과 출력
+            console.log(`--------------------------------------------------`);
+            console.log(`[개별 진단] ID: ${id} | Platform: ${platform}`);
+            console.log(`ㄴ SOOP 판단결과: ${isSoop}`);
+            console.log(`ㄴ 생성된 강제 URL: ${forcedSoopImg}`);
+
+            // 4. URL 결정 (형님 요청: 없으면 NULL 말고 "에러" 입력)
+            let finalProfileImg = "에러"; // 기본값 "에러"
+
+            if (isSoop) {
+                // SOOP이면 무조건 강제 생성 주소
+                finalProfileImg = forcedSoopImg;
+            } else {
+                // SOOP 아니면 기존꺼 쓰되, 없으면 "에러"
+                finalProfileImg = item.profile_img || "에러";
+            }
             
-            // SOOP 이미지 주소 강제 생성
-            const firstTwo = item.id.substring(0, 2);
-            const forcedImgUrl = `https://stimg.sooplive.co.kr/LOGO/${firstTwo}/${item.id}/m/${item.id}.webp`;
+            console.log(`ㄴ [최종 할당 값]: ${finalProfileImg}`);
 
-            // DB에 쏠 최종 데이터 객체
-            let dbData = {
-                id: item.id,
-                platform: item.platform,
+            // 5. DB 객체 리턴
+            return {
+                id: id,
+                platform: item.platform, 
                 group_name: item.group_name, 
                 nickname: item.nickname,
                 is_active: true,
                 last_updated_at: new Date(),
-                // [확인 포인트] 여기서 주소가 제대로 박히는지 로그로 확인 가능
-                profile_img: item.platform === 'soop' ? forcedImgUrl : (item.profile_img || null),
+                profile_img: finalProfileImg, // 여기가 핵심
                 total_broadcast_time: item.total_broadcast_time || null 
             };
-            
-            // (부가 정보 수집 로직은 에러나도 무시하고 진행하도록 try-catch 감쌈)
-            if (item.platform === 'soop') {
-                try {
-                    const resp = await fetch(`https://chapi.sooplive.co.kr/api/${item.id}/station`, {
-                        headers: { "User-Agent": "Mozilla/5.0", "Cookie": soopCookieVal, "Referer": `https://ch.sooplive.co.kr/${item.id}` }
-                    });
-                    if (resp.ok) {
-                        const json = await resp.json();
-                        if (json?.station) {
-                            dbData.nickname = json.station.user_nick || dbData.nickname;
-                            dbData.total_broadcast_time = json.station.total_broad_time;
-                        }
-                    }
-                } catch (e) {}
-            } else if (item.platform === 'chzzk') {
-                try {
-                    const resp = await fetch(`https://api.chzzk.naver.com/service/v1/channels/${item.id}`);
-                    if (resp.ok) {
-                        const json = await resp.json();
-                        if (json?.content) {
-                            dbData.nickname = json.content.channelName;
-                            dbData.profile_img = json.content.channelImageUrl;
-                        }
-                    }
-                } catch (e) {}
-            }
+        });
 
-            return dbData;
-        }));
+        // [요청하신 부분 2] 모두 완료 후 DB 넣기 전 전체 데이터 검사
+        console.log(`==================================================`);
+        console.log(`=== [최종 점검] DB 전송 직전 데이터 리스트 ===`);
+        results.forEach((r, idx) => {
+            console.log(`${idx + 1}. [${r.id}] 최종 이미지: ${r.profile_img}`);
+        });
+        console.log(`==================================================`);
 
-        // 3. 쏘는 데이터 눈으로 확인 (Vercel 로그에서 확인 가능)
-        console.log("=== [3] DB로 쏘기 직전 데이터 샘플 (첫번째 놈) ===");
-        console.log(JSON.stringify(results[0], null, 2)); 
-        // 여기서 profile_img가 찍혀있으면 '쏘는 놈'은 무죄임.
+        // 6. DB 저장 (onConflict: id -> 덮어쓰기)
+        const { data, error } = await supabase
+            .from('streamers')
+            .upsert(results, { onConflict: 'id' })
+            .select();
 
-        // 4. DB에 전송 (Upsert)
-        console.log("=== [4] Supabase Upsert 실행 ===");
-        const { data, error } = await supabase.from('streamers').upsert(results);
-
-        // 5. 결과 판독
         if (error) {
-            console.error("!!! [5] DB 저장 실패 (받는 놈이 거부함) !!!");
-            console.error("에러 코드:", error.code);
-            console.error("에러 메시지:", error.message);
-            console.error("상세 내용:", error.details);
-            
-            // 형님 브라우저에 에러 내용 그대로 전달
-            return res.status(500).json({ 
-                success: false, 
-                stage: 'DB_WRITE_FAIL',
-                error_code: error.code,
-                error_msg: error.message,
-                error_detail: error.details 
-            });
+            console.error("!!! DB 저장 중 에러 발생 !!!", error);
+            throw error;
         }
 
-        console.log("=== [5] DB 저장 성공 ===");
-        res.status(200).json({ success: true, count: results.length, message: "저장 성공" });
+        res.status(200).json({ 
+            success: true, 
+            message: "디버깅 완료. 로그를 확인하세요.", 
+            saved_count: data.length
+        });
 
     } catch (e) {
-        console.error("!!! [시스템 에러] 코드 실행 중 뻗음 !!!");
-        console.error(e);
-        res.status(500).json({ error: e.message, stack: e.stack });
+        console.error("스크립트 실행 에러:", e);
+        res.status(500).json({ error: e.message });
     }
 }
