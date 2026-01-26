@@ -33,6 +33,10 @@ export default async function handler(req, res) {
     try {
         const results = await Promise.all(items.map(async (item) => {
             
+            // [핵심] SOOP일 경우, 기존 이미지 유무 상관없이 스샷 규칙대로 강제 생성
+            const firstTwo = item.id.substring(0, 2);
+            const forcedSoopImg = `https://stimg.sooplive.co.kr/LOGO/${firstTwo}/${item.id}/m/${item.id}.webp`;
+
             let dbData = {
                 id: item.id,
                 platform: item.platform,
@@ -40,7 +44,8 @@ export default async function handler(req, res) {
                 nickname: item.nickname,
                 is_active: true,
                 last_updated_at: new Date(),
-                profile_img: item.profile_img || null,
+                // SOOP이면 강제 주소 할당, 아니면 기존/NULL 유지
+                profile_img: item.platform === 'soop' ? forcedSoopImg : (item.profile_img || null),
                 total_broadcast_time: item.total_broadcast_time || null 
             };
 
@@ -51,47 +56,26 @@ export default async function handler(req, res) {
 
             try {
                 // ===============================================
-                // [1] SOOP (숲) - 최신 도메인 & 고정 URL 방식 적용
+                // [1] SOOP (숲) - 최신 도메인 및 데이터 수집
                 // ===============================================
                 if (item.platform === 'soop') {
-                    // [핵심] 스샷 규칙대로 이미지 주소 고정 생성 (ID 기반)
-                    const firstTwo = item.id.substring(0, 2);
-                    dbData.profile_img = `https://stimg.sooplive.co.kr/LOGO/${firstTwo}/${item.id}/m/${item.id}.webp`;
-
-                    // [수정] 도메인 싹 다 sooplive.co.kr로 변경
                     const apiUrl = `https://chapi.sooplive.co.kr/api/${item.id}/station`;
                     const referer = `https://ch.sooplive.co.kr/${item.id}`;
 
-                    // --- [시도 1] 쿠키 넣어서 요청 ---
-                    let headers1 = { 
-                        ...commonHeaders, 
-                        'Referer': referer,
-                        'Origin': 'https://ch.sooplive.co.kr'
-                    };
-                    if (soopCookieVal) headers1['Cookie'] = soopCookieVal;
-
-                    let resp = await fetch(apiUrl, { headers: headers1 });
-                    let success = false;
-                    let json = null;
+                    const resp = await fetch(apiUrl, {
+                        headers: { 
+                            ...commonHeaders, 
+                            'Referer': referer,
+                            'Origin': 'https://ch.sooplive.co.kr',
+                            'Cookie': soopCookieVal 
+                        }
+                    });
 
                     if (resp.ok) {
-                        json = await resp.json();
-                        // 숲 스테이션 데이터 유무 확인
-                        if (json?.station) success = true;
-                    }
-
-                    // --- [시도 2] 실패 시 재요청 ---
-                    if (!success) {
-                        let headers2 = { ...commonHeaders, 'Referer': referer, 'Origin': 'https://ch.sooplive.co.kr' };
-                        resp = await fetch(apiUrl, { headers: headers2 });
-                        if (resp.ok) json = await resp.json();
-                    }
-
-                    // --- 데이터 저장 (이미지는 이미 위에서 고정함) ---
-                    if (json && json.station) {
-                        dbData.nickname = json.station.user_nick || dbData.nickname;
-                        if (json.station.total_broad_time) {
-                            dbData.total_broadcast_time = json.station.total_broad_time;
+                        const json = await resp.json();
+                        if (json && json.station) {
+                            dbData.nickname = json.station.user_nick || dbData.nickname;
+                            dbData.total_broadcast_time = json.station.total_broad_time || dbData.total_broadcast_time;
                         }
                     }
                 } 
@@ -99,10 +83,10 @@ export default async function handler(req, res) {
                 // [2] CHZZK (치지직)
                 // ===============================================
                 else if (item.platform === 'chzzk') {
-                    let headers = { ...commonHeaders };
-                    if (chzzkCookieVal) headers['Cookie'] = chzzkCookieVal;
-
-                    const resp = await fetch(`https://api.chzzk.naver.com/service/v1/channels/${item.id}`, { headers });
+                    const resp = await fetch(`https://api.chzzk.naver.com/service/v1/channels/${item.id}`, {
+                        headers: { ...commonHeaders, 'Cookie': chzzkCookieVal }
+                    });
+                    
                     if (resp.ok) {
                         const json = await resp.json();
                         if (json && json.content) {
@@ -118,7 +102,7 @@ export default async function handler(req, res) {
             return dbData;
         }));
 
-        // DB 저장
+        // DB 저장 (Upsert로 강제 갱신)
         const { error } = await supabase.from('streamers').upsert(results);
         if (error) throw error;
 
