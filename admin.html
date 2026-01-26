@@ -31,17 +31,6 @@
     </style>
 </head>
 <body>
-    <div id="debug-console" style="
-    display:none; position:fixed; bottom:10px; right:10px; width:400px; height:300px;
-    background:rgba(0,0,0,0.9); color:#0f0; border:2px solid #0f0; z-index:9999;
-    padding:10px; overflow-y:scroll; font-family:monospace; font-size:12px;">
-    <div style="border-bottom:1px solid #555; margin-bottom:5px;">
-        <strong>📢 갱신 로그</strong>
-        <button onclick="this.parentElement.parentElement.style.display='none'" style="float:right; color:white; background:red; border:none; cursor:pointer;">X</button>
-    </div>
-    <div id="log-content"></div>
-</div>
-
     <div id="loginOverlay">
         <div class="login-box">
             <h2>🔒 관리자 접속</h2>
@@ -328,5 +317,33 @@
 }
 
 </script>
+    
+<div id="debug-console" style="
+    display: none; /* 평소엔 숨김 */
+    position: fixed; 
+    bottom: 10px; 
+    right: 10px; 
+    width: 500px; 
+    height: 400px; 
+    background-color: rgba(0,0,0,0.95); 
+    border: 3px solid red; /* 눈에 띄라고 빨간 테두리 */
+    z-index: 2147483647; /* 웹 브라우저 최대값: 무조건 맨 위에 뜸 */
+    color: #0f0; 
+    padding: 15px; 
+    overflow-y: auto; 
+    font-family: monospace; 
+    font-size: 14px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.8);">
+    
+    <div style="border-bottom: 2px solid #555; margin-bottom: 10px; padding-bottom: 5px;">
+        <strong style="font-size: 16px; color: yellow;">📢 시스템 로그창</strong>
+        <button onclick="document.getElementById('debug-console').style.display='none'" 
+                style="float:right; padding: 5px 10px; cursor:pointer; background:red; color:white; font-weight:bold; border:none;">
+            X 닫기
+        </button>
+    </div>
+    <div id="log-content"></div>
+</div>
+    
 </body>
 </html>
