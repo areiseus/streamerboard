@@ -68,7 +68,7 @@ export default async function handler(req, res) {
 
                     if (resp.ok) {
                         json = await resp.json();
-                        // [수정] image_profile 뿐만 아니라 profile_image도 같이 체크
+                        // [수정] profile_image 필드까지 확실히 체크하도록 보강
                         if (json?.station?.profile_image || json?.station?.image_profile) success = true;
                     }
 
@@ -76,6 +76,7 @@ export default async function handler(req, res) {
                     if (!success) {
                         console.log(`[SOOP 재시도] ${item.id} - 쿠키 빼고 재요청`);
                         let headers2 = { ...commonHeaders, 'Referer': referer };
+                        // 쿠키 절대 넣지 않음
                         resp = await fetch(apiUrl, { headers: headers2 });
                         if (resp.ok) json = await resp.json();
                     }
@@ -88,7 +89,7 @@ export default async function handler(req, res) {
                             dbData.total_broadcast_time = json.station.total_broad_time;
                         }
 
-                        // [핵심 수정] 숲 API의 바뀐 필드명(profile_image)을 우선적으로 긁어옴
+                        // [핵심] 숲 API의 여러 필드(profile_image 등)에서 이미지를 가져옵니다.
                         let img = json.station.profile_image || json.station.image_profile || json.station.user_image;
                         if (img) {
                             if (img.startsWith('//')) dbData.profile_img = 'https:' + img;
