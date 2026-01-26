@@ -61,66 +61,62 @@
 </div>
 
 <script>
-    // 1. 가상의 데이터 (여기를 수정하면 화면이 바뀝니다)
-    const STREAMERS = [
-        { id: 'user1', name: '숲속요정', img: 'https://via.placeholder.com/80', isLive: true },
-        { id: 'user2', name: '게임대장', img: 'https://via.placeholder.com/80', isLive: false },
-        { id: 'user3', name: '먹방황제', img: 'https://via.placeholder.com/80', isLive: false },
-        { id: 'user4', name: '토크장인', img: 'https://via.placeholder.com/80', isLive: true },
+    // 1. 진짜 스트리머 ID 목록 (여기에 원하는 BJ 아이디를 넣으세요!)
+    const STREAMER_IDS = [
+        'bluejin0129', // 예시 ID
+        'moonightwmn', 
+        'gome02', 
+        'likethis1125' 
     ];
 
-    // 가상의 방송 시간 데이터
-    const HISTORY = { '5': 180, '8': 240, '12': 120, '15': 300, '24': 400 };
+    const list = document.getElementById('card-list');
 
-    // 초기 화면 그리기
-    const list = document.getElementById('streamer-list');
-    STREAMERS.forEach(s => {
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.innerHTML = `
-            <img src="${s.img}">
-            <h3>${s.name}</h3>
-            <span class="badge ${s.isLive ? 'live' : 'off'}">${s.isLive ? '🔴 방송중' : '⚫ OFF'}</span>
-        `;
-        card.onclick = () => openModal(s);
-        list.appendChild(card);
-    });
+    // 2. 데이터 가져오기 함수
+    async function loadStreamers() {
+        list.innerHTML = ''; // 목록 초기화
 
-    // 모달 및 차트 기능
-    let chartInstance = null;
-    function openModal(s) {
+        for (const id of STREAMER_IDS) {
+            // 카드 뼈대 만들기 (로딩 중 표시)
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.id = `card-${id}`;
+            card.innerHTML = `<p>데이터 로딩중...</p>`;
+            list.appendChild(card);
+
+            try {
+                // 아까 만든 엔진(API)에게 데이터 요청!
+                const res = await fetch(`/api/info?id=${id}`);
+                const data = await res.json();
+
+                // 카드 내용 채우기
+                card.innerHTML = `
+                    <img src="${data.img}" class="profile-img" alt="${data.name}">
+                    <div class="bj-name">${data.name}</div>
+                    <span class="status ${data.isLive ? 'live' : 'off'}">
+                        ${data.isLive ? '🔴 방송중' : '⚫ 오프라인'}
+                    </span>
+                `;
+                // 클릭하면 모달 열기 (기존 기능 유지)
+                card.onclick = () => openModal(data.name);
+
+            } catch (err) {
+                card.innerHTML = `<p>불러오기 실패<br>(${id})</p>`;
+            }
+        }
+    }
+
+    // 모달 관련 함수 (기존 유지)
+    function openModal(name) {
         document.getElementById('modal').style.display = 'block';
-        document.getElementById('modal-title').innerText = s.name + "님의 기록";
+        document.getElementById('modal-title').innerText = `${name}님의 기록`;
         renderCalendar();
         renderChart();
     }
     function closeModal() { document.getElementById('modal').style.display = 'none'; }
-    
-    function renderCalendar() {
-        const grid = document.getElementById('calendar-grid');
-        grid.innerHTML = '';
-        ['일','월','화','수','목','금','토'].forEach(d => grid.innerHTML += `<div class="cal-head">${d}</div>`);
-        for(let i=0; i<31; i++) {
-            const time = HISTORY[i+1];
-            grid.innerHTML += `<div class="cal-day ${time?'has-vod':''}">${i+1} ${time?`<br>${Math.floor(time/60)}h`:''}</div>`;
-        }
-    }
-
-    function renderChart() {
-        const ctx = document.getElementById('timeChart');
-        if(chartInstance) chartInstance.destroy();
-        chartInstance = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ['1주','2주','3주','4주'],
-                datasets: [{ label: '방송 시간', data: [10, 25, 15, 30], borderColor: '#2ed573', tension: 0.3 }]
-            },
-            options: { maintainAspectRatio: false }
-        });
-    }
-    
+    function renderCalendar() { /* 달력 코드는 그대로 두거나 필요하면 복사 */ }
+    function renderChart() { /* 차트 코드도 그대로 */ }
     window.onclick = (e) => { if(e.target == document.getElementById('modal')) closeModal(); }
-</script>
 
-</body>
-</html>
+    // 시작!
+    loadStreamers();
+</script>
