@@ -6,43 +6,25 @@
     <title>Streamer Board</title>
     <style>
         :root { --primary: #42C769; --bg: #F0F2F5; --card: #ffffff; --text: #2f3542; }
-        body { margin: 0; background: var(--bg); font-family: 'Pretendard', -apple-system, sans-serif; color: var(--text); }
-        
+        body { margin: 0; background: var(--bg); font-family: 'Pretendard', sans-serif; color: var(--text); }
         .container { max-width: 1000px; margin: 0 auto; padding: 40px 20px; position: relative; }
         
-        /* 헤더 스타일 */
-        header { text-align: center; margin-bottom: 30px; position: relative; }
+        header { text-align: center; margin-bottom: 30px; }
         header h1 { color: #333; margin: 0; font-size: 2.5rem; letter-spacing: -1px; }
         
-        /* 🔥 관리자 버튼 (우측 상단 고정) */
+        /* 우측 상단 관리자 버튼 */
         .admin-link-btn {
-            position: absolute;
-            top: 0;
-            right: 0;
-            background: white;
-            border: 1px solid #ddd;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            color: #666;
-            cursor: pointer;
-            text-decoration: none;
-            font-weight: bold;
-            transition: all 0.2s;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            position: absolute; top: 20px; right: 20px;
+            background: white; border: 1px solid #ddd; padding: 8px 15px; border-radius: 20px;
+            font-size: 0.85rem; color: #666; cursor: pointer; text-decoration: none; font-weight: bold;
+            transition: all 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
         .admin-link-btn:hover { background: #333; color: white; border-color: #333; }
 
-        .group-section { margin-bottom: 40px; }
-        .group-header { display: flex; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
-        .group-title { font-size: 1.4rem; font-weight: bold; color: #333; margin-right: 15px; }
+        /* 그리드 레이아웃 */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; margin-top: 30px;}
         
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
-        
-        /* 로딩 애니메이션 */
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-        .card.loading { animation: pulse 1.5s infinite; }
-
+        /* 카드 스타일 */
         .card { 
             position: relative; background: var(--card); border-radius: 20px; padding: 25px 15px; text-align: center; 
             cursor: pointer; transition: all 0.3s ease; border: 1px solid transparent; box-shadow: 0 5px 15px rgba(0,0,0,0.05);
@@ -52,15 +34,13 @@
         
         .profile-wrapper { position: relative; width: 90px; height: 90px; margin: 0 auto 15px; }
         .card img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid #eee; background: #eee;}
-        .card.is-live img { border-color: #ff4757; box-shadow: 0 0 10px rgba(255, 71, 87, 0.5); }
         
         .badges { position: absolute; bottom: -5px; width: 100%; text-align: center; display: flex; justify-content: center; gap: 5px; }
         .badge { padding: 4px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; color: white; }
+        
         .badge.live { background: #ff4757; display: none; }
         .card.is-live .badge.live { display: inline-block; }
         
-        /* 플랫폼 뱃지 */
-        .badge.platform { background: #333; display: inline-block; }
         .badge.soop { background: #42C769; }
         .badge.chzzk { background: #00E59D; color: #1e1e1e; }
         
@@ -73,86 +53,88 @@
 <div class="container">
     <header>
         <h1>Streamer Board</h1>
-        <p>실시간 방송 현황</p>
+        <p>실시간 방송 현황 (DB 연동됨)</p>
         <button class="admin-link-btn" onclick="location.href='admin.html'">⚙️ 관리자</button>
     </header>
 
-    <div id="dashboard-content">
-        <p style="text-align:center; padding:50px; color:#666;">데이터를 불러오는 중입니다...</p>
+    <div id="dashboard-content" class="grid">
+        <p style="text-align:center; width:100%; color:#666;">데이터를 불러오는 중입니다...</p>
     </div>
 </div>
 
 <script>
-    let dashboardData = { groups: [], ungrouped: [] };
-
-    // 1. 초기화: list.json 읽기
+    // 1. 초기화: DB에서 목록 가져오기
     async function init() {
         try {
-            const listRes = await fetch('list.json?t=' + Date.now());
-            if(listRes.ok) {
-                dashboardData = await listRes.json();
-                renderSkeleton();
-                fetchLiveStatus();
+            // DB 목록 API 호출
+            const res = await fetch('/api/get_list');
+            if(!res.ok) throw new Error("DB 로드 실패");
+            
+            const streamers = await res.json();
+            
+            if(streamers.length === 0) {
+                document.getElementById('dashboard-content').innerHTML = '<p style="padding:20px; text-align:center;">등록된 스트리머가 없습니다.<br>관리자 페이지에서 추가하고 [⚡프로필 갱신]을 눌러주세요.</p>';
+                return;
             }
-        } catch (e) { console.error("초기화 실패:", e); }
+
+            // 화면 그리기 (초기 상태)
+            renderCards(streamers);
+            
+            // 실시간 방송 여부 확인 시작
+            fetchLiveStatus(streamers);
+
+        } catch (e) { 
+            console.error(e); 
+            document.getElementById('dashboard-content').innerHTML = '<p>데이터 로딩 중 오류가 발생했습니다.</p>';
+        }
     }
 
-    // 2. 뼈대 그리기
-    function renderSkeleton() {
+    // 2. 카드 렌더링
+    function renderCards(list) {
         const container = document.getElementById('dashboard-content');
-        container.innerHTML = '';
-        
-        const allGroups = [...dashboardData.groups];
-        if(dashboardData.ungrouped.length > 0) {
-            allGroups.push({ id: 'g_ungrouped', name: '기타 (미분류)', members: dashboardData.ungrouped });
-        }
+        container.innerHTML = ''; // 초기화
 
-        allGroups.forEach(group => {
-            const section = document.createElement('div');
-            section.className = 'group-section';
-            section.innerHTML = `
-                <div class="group-header"><span class="group-title">${group.name}</span></div>
-                <div class="grid" id="grid-${group.id}"></div>
-            `;
-            const grid = section.querySelector('.grid');
+        list.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.id = `card-${item.id}`; // 나중에 업데이트를 위해 ID 부여
             
-            group.members.forEach(member => {
-                // member가 객체({id, platform})일 수도 있고 문자열일 수도 있음 호환성 처리
-                const id = typeof member === 'string' ? member : member.id;
-                
-                const card = document.createElement('div');
-                card.className = 'card loading';
-                card.id = `card-base-${id}`;
-                card.innerHTML = `
-                    <div class="profile-wrapper">
-                        <img src="https://via.placeholder.com/90?text=..." style="opacity:0.5">
+            const pClass = item.platform === 'chzzk' ? 'chzzk' : 'soop';
+            const pName = item.platform === 'chzzk' ? 'C' : 'S';
+            const imgUrl = item.profile_img || 'https://via.placeholder.com/90?text=NoImg';
+
+            card.innerHTML = `
+                <div class="profile-wrapper">
+                    <img src="${imgUrl}">
+                    <div class="badges">
+                        <span class="badge ${pClass}">${pName}</span>
+                        <span class="badge live">LIVE</span>
                     </div>
-                    <h3>${id}</h3>
-                    <p class="status-text">확인 중...</p>
-                `;
-                grid.appendChild(card);
-            });
-            container.appendChild(section);
+                </div>
+                <h3>${item.nickname || item.id}</h3>
+                <p class="status-text" id="status-${item.id}">오프라인</p>
+            `;
+            
+            // 클릭 시 이동
+            let link = item.platform === 'chzzk' 
+                ? `https://chzzk.naver.com/live/${item.id}` 
+                : `https://play.afreecatv.com/${item.id}`;
+                
+            card.onclick = () => window.open(link, '_blank');
+            container.appendChild(card);
         });
     }
 
     // 3. 실시간 상태 확인 (api/live.js 호출)
-    async function fetchLiveStatus() {
-        const allItems = [];
-        const pushMembers = (list) => list.forEach(m => {
-            // 중복 제거 및 포맷 통일
-            const item = typeof m === 'string' ? { id: m, platform: 'soop' } : m;
-            if(!allItems.find(x => x.id === item.id)) allItems.push(item);
-        });
-
-        dashboardData.groups.forEach(g => pushMembers(g.members));
-        pushMembers(dashboardData.ungrouped);
-
+    async function fetchLiveStatus(streamers) {
         try {
+            // DB 형식 데이터를 API가 원하는 형식으로 변환 ({id, platform})
+            const targets = streamers.map(s => ({ id: s.id, platform: s.platform }));
+
             const res = await fetch('/api/live', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: allItems })
+                body: JSON.stringify({ items: targets })
             });
             
             const results = await res.json();
@@ -161,65 +143,21 @@
         } catch (e) { console.error("라이브 체크 실패:", e); }
     }
 
-    // 4. 화면 업데이트
+    // 4. 상태 업데이트 (색상, 텍스트 변경)
     function updateUI(results) {
-        const statusMap = {};
-        results.forEach(r => statusMap[r.id] = r);
+        results.forEach(r => {
+            const card = document.getElementById(`card-${r.id}`);
+            const statusText = document.getElementById(`status-${r.id}`);
+            if(!card || !statusText) return;
 
-        const container = document.getElementById('dashboard-content');
-        container.innerHTML = ''; 
-
-        const allGroups = [...dashboardData.groups];
-        if(dashboardData.ungrouped.length > 0) allGroups.push({ id: 'g_ungrouped', name: '기타 (미분류)', members: dashboardData.ungrouped });
-
-        allGroups.forEach(group => {
-            const section = document.createElement('div');
-            section.className = 'group-section';
-            section.innerHTML = `<div class="group-header"><span class="group-title">${group.name}</span></div><div class="grid"></div>`;
-            const grid = section.querySelector('.grid');
-
-            group.members.forEach(member => {
-                const m = typeof member === 'string' ? { id: member, platform: 'soop' } : member;
-                const data = statusMap[m.id] || { name: m.id, img: null, isLive: false, viewers: 0 };
-                
-                const card = createCardElement(m, data);
-                grid.appendChild(card);
-            });
-            container.appendChild(section);
+            if(r.isLive) {
+                card.classList.add('is-live');
+                statusText.innerText = `🔴 ${r.viewers ? r.viewers.toLocaleString() : '방송중'}`;
+            } else {
+                card.classList.remove('is-live');
+                statusText.innerText = '⚫ 오프라인';
+            }
         });
-    }
-
-    function createCardElement(member, data) {
-        const card = document.createElement('div');
-        card.className = 'card';
-        if (data.isLive) card.classList.add('is-live');
-        
-        // 플랫폼 뱃지
-        const pClass = member.platform === 'chzzk' ? 'chzzk' : 'soop';
-        const pName = member.platform === 'chzzk' ? 'C' : 'S';
-
-        // 이미지 (없으면 기본값)
-        const imgUrl = data.img || 'https://via.placeholder.com/90?text=NONE';
-
-        card.innerHTML = `
-            <div class="profile-wrapper">
-                <img src="${imgUrl}">
-                <div class="badges">
-                    <span class="badge platform ${pClass}">${pName}</span>
-                    <span class="badge live">LIVE</span>
-                </div>
-            </div>
-            <h3>${data.name}</h3>
-            <p class="status-text">
-                ${data.isLive ? `🔴 ${data.viewers.toLocaleString()}명` : '⚫ 오프라인'}
-            </p>
-        `;
-        
-        // 클릭 시 해당 플랫폼 방송국으로 이동
-        card.onclick = () => {
-            if(data.link) window.open(data.link, '_blank');
-        };
-        return card;
     }
 
     init();
