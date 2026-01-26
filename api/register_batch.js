@@ -56,34 +56,61 @@ export default async function handler(req, res) {
                 // ===============================================
                 if (item.platform === 'soop') {
                     const apiUrl = `https://bjapi.afreecatv.com/api/${item.id}/station`;
+                    const referer = `https://bj.afreecatv.com/${item.id}`;
+
+                    // --- [시도 1] 쿠키 넣어서 요청 ---
+                    let headers1 = { 
++                       ...commonHeaders, 
++                       "Accept": "application/json, text/plain, */*",
++                       "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
++                       "Referer": referer,
++                       "Origin": "https://bj.afreecatv.com"
++                   };
++                   if (soopCookieVal) headers1['Cookie'] = soopCookieVal;
+
+
                     
-                    const resp = await fetch(apiUrl, {
-                        headers: {
-                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                            "Accept": "application/json, text/plain, */*",
-                            "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
-                            "Referer": `https://bj.afreecatv.com/${item.id}`,
-                            "Cookie": soopCookieVal
-                        }
-                    });
+                    let resp = await fetch(apiUrl, { headers: headers1 });
+                    let success = false;
+                    let json = null;
 
                     if (resp.ok) {
-                        const json = await resp.json();
-                        if (json && json.station) {
-                            dbData.nickname = json.station.user_nick;
-                            if (json.station.total_broad_time) dbData.total_broadcast_time = json.station.total_broad_time;
+                        json = await resp.json();
+                        // [수정] image_profile 뿐만 아니라 profile_image도 같이 체크
+                        if (json?.station?.profile_image || json?.station?.image_profile) success = true;
+                    }
 
-                            // 스샷에서 본 stimg.sooplive.co.kr 주소를 가져오는 핵심 필드
-                            let img = json.station.profile_image || json.station.image_profile;
-                            
-                            if (img) {
-                                if (img.startsWith('//')) dbData.profile_img = 'https:' + img;
-                                else if (!img.startsWith('http')) dbData.profile_img = 'https://' + img;
-                                else dbData.profile_img = img;
-                            }
+                    // --- [시도 2] 실패 시, 쿠키 빼고 '순수 시청자 모드'로 재요청 ---
+                    if (!success) {
+                        console.log(`[SOOP 재시도] ${item.id} - 쿠키 빼고 재요청`);
+                        let headers2 = { 
++                           ...commonHeaders,
++                           "Accept": "application/json, text/plain, */*",
++                           "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
++                           "Referer": referer,
++                           "Origin": "https://bj.afreecatv.com"
++                       };                        
+                        resp = await fetch(apiUrl, { headers: headers2 });
+                        if (resp.ok) json = await resp.json();
+                    }
+
+                    // --- 데이터 저장 ---
+                    if (json && json.station) {
+                        dbData.nickname = json.station.user_nick;
+                        
+                        if (json.station.total_broad_time) {
+                            dbData.total_broadcast_time = json.station.total_broad_time;
+                        }
+
+                        // [핵심 수정] 숲 API의 바뀐 필드명(profile_image)을 우선적으로 긁어옴
+                        let img = json.station.profile_image || json.station.image_profile || json.station.user_image;
+                        if (img) {
+                            if (img.startsWith('//')) dbData.profile_img = 'https:' + img;
+                            else if (!img.startsWith('http')) dbData.profile_img = 'https://' + img;
+                            else dbData.profile_img = img;
                         }
                     }
-                }
+                } 
                 // ===============================================
                 // [2] CHZZK (치지직)
                 // ===============================================
