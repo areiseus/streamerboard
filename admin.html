@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 페이지 - Streamer Board</title>
+    <style>
+        :root { --primary: #42C769; --bg: #333; --card: #ffffff; --text: #2f3542; }
+        body { margin: 0; background: var(--bg); font-family: 'Pretendard', sans-serif; color: var(--text); }
+        
+        .container { max-width: 1000px; margin: 40px auto; background: #f0f2f5; padding: 40px; border-radius: 20px; min-height: 80vh; }
+        header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #ddd; padding-bottom: 20px; }
+        header h1 { margin: 0; font-size: 2rem; }
+        
+        /* 관리자 패널 스타일 */
+        #admin-panel { background: white; padding: 20px; border-radius: 15px; margin-bottom: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); border: 2px solid var(--primary); }
+        .admin-row { display: flex; gap: 10px; justify-content: center; margin-bottom: 15px; flex-wrap: wrap; align-items: center; padding: 10px; border-radius: 8px;}
+        input, select { padding: 10px; border: 1px solid #ddd; border-radius: 8px; }
+        button { background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button:hover { opacity: 0.9; transform: scale(1.02); }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        button.danger { background: #ff4757; }
+        button.secondary { background: #57606f; }
+        
+        /* 동기화 패널 (강조) */
+        .sync-panel { background-color: #e3fcf0; border: 1px solid #42C769; }
+
+        .group-section { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
+        .group-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px dashed #ddd; padding-bottom: 10px; }
+        .group-title { font-size: 1.2rem; font-weight: bold; }
+        
+        .list-item { display: inline-block; background: #eee; padding: 5px 10px; border-radius: 20px; margin: 5px; font-size: 0.9rem; }
+        .del-x { color: red; cursor: pointer; font-weight: bold; margin-left: 5px; }
+
+        .alert-box { background: #fff3cd; color: #856404; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; border: 1px solid #ffeeba; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>⚙️ Streamer Board 관리자</h1>
+        <p>설정을 변경한 후에는 반드시 <b>[JSON 다운로드]</b>하여 GitHub에 올려주세요.</p>
+        <button class="secondary" onclick="location.href='index.html'">🏠 메인으로 돌아가기</button>
+    </header>
+
+    <div class="alert-box">
+        ⚠️ <b>중요:</b> 수정을 마치면 [💾 list.json 다운로드]를 눌러 파일을 받고,<br>
+        GitHub의 <b>list.json</b> 내용을 교체해야 합니다.
+        <br><br>
+        <button onclick="downloadJson()">💾 list.json 다운로드</button>
+    </div>
+
+    <div id="admin-panel">
+        <div class="admin-row sync-panel">
+            <h3>🔄 서버 데이터 동기화</h3>
+            <p style="font-size:0.9rem; color:#006266; margin: 0 15px;">
+                등록된 모든 스트리머의 최신 정보(닉네임, 프사)를<br>숲(SOOP)에서 가져와 <b>DB에 저장</b>합니다.
+            </p>
+            <button onclick="triggerSync()" id="sync-btn">⚡ 모두 갱신 (DB 저장)</button>
+        </div>
+        <hr style="border:0; border-top:1px dashed #ddd; margin: 20px 0;">
+
+        <div class="admin-row">
+            <h3>📂 그룹 추가</h3>
+            <input type="text" id="new-group-name" placeholder="새 그룹 이름">
+            <button onclick="addNewGroup()">생성</button>
+        </div>
+        <div class="admin-row">
+            <h3>➕ 멤버 추가</h3>
+            <input type="text" id="new-streamer-id" placeholder="BJ 아이디">
+            <select id="group-select"></select>
+            <button onclick="addStreamer()">추가</button>
+        </div>
+    </div>
+
+    <div id="preview-list"></div>
+</div>
+
+<script>
+    let dashboardData = { groups: [], ungrouped: [] };
+    let ADMIN_PASSWORD = "1234";
+
+    // 1. 초기화
+    async function init() {
+        try {
+            const confRes = await fetch('admin.json?t=' + Date.now());
+            if(confRes.ok) { const conf = await confRes.json(); ADMIN_PASSWORD = conf.password; }
+        } catch(e) {}
+
+        let pw = prompt("관리자 비밀번호를 입력하세요:");
+        if(pw !== ADMIN_PASSWORD) {
+            alert("비밀번호가 틀렸습니다. 메인으로 이동합니다.");
+            location.href = 'index.html';
+            return;
+        }
+
+        const localData = localStorage.getItem('myStreamerData');
+        if (localData) {
+            dashboardData = JSON.parse(localData);
+        } else {
+            try {
+                const res = await fetch('list.json?t=' + Date.now());
+                if(res.ok) dashboardData = await res.json();
+            } catch(e) {}
+        }
+        renderManager();
+    }
+
+    // 2. [핵심 기능] DB 동기화 요청
+    async function triggerSync() {
+        const btn = document.getElementById('sync-btn');
+        
+        // ID 목록 추출
+        const allIds = new Set();
+        dashboardData.groups.forEach(g => g.members.forEach(id => allIds.add(id)));
+        dashboardData.ungrouped.forEach(id => allIds.add(id));
+        
+        if(allIds.size === 0) return alert("등록된 스트리머가 없습니다.");
+
+        if(!confirm(`총 ${allIds.size}명의 데이터를 숲(SOOP)에서 가져와 DB에 저장하시겠습니까?\n(시간이 조금 걸릴 수 있습니다)`)) return;
+
+        // 로딩 상태 표시
+        btn.innerText = "⏳ 동기화 진행 중...";
+        btn.disabled = true;
+
+        try {
+            const res = await fetch('/api/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: Array.from(allIds) })
+            });
+            
+            const result = await res.json();
+
+            if(res.ok) {
+                alert(`✅ 동기화 완료!\n- 성공: ${result.results.filter(r=>r.status==='success').length}명\n- 실패: ${result.results.filter(r=>r.status==='failed').length}명`);
+                console.log("Sync Result:", result);
+            } else {
+                alert("❌ 오류 발생: " + result.error);
+            }
+
+        } catch (error) {
+            console.error(error);
+            alert("❌ 서버 통신 중 오류가 발생했습니다.");
+        } finally {
+            // 버튼 복구
+            btn.innerText = "⚡ 모두 갱신 (DB 저장)";
+            btn.disabled = false;
+        }
+    }
+
+    // --- 기존 UI 로직들 (유지) ---
+    function renderManager() {
+        const container = document.getElementById('preview-list');
+        container.innerHTML = '';
+
+        dashboardData.groups.forEach((group, index) => {
+            const section = document.createElement('div');
+            section.className = 'group-section';
+            section.innerHTML = `
+                <div class="group-header">
+                    <span class="group-title">${group.name}</span>
+                    <div>
+                        <button class="secondary" onclick="renameGroup(${index})">이름변경</button>
+                        <button class="secondary" onclick="moveGroup(${index}, -1)">▲</button>
+                        <button class="secondary" onclick="moveGroup(${index}, 1)">▼</button>
+                        <button class="danger" onclick="deleteGroup(${index})">삭제</button>
+                    </div>
+                </div>
+                <div class="members-area"></div>
+            `;
+            const memArea = section.querySelector('.members-area');
+            if(group.members.length === 0) memArea.innerHTML = '<span style="color:#aaa">멤버 없음</span>';
+            else {
+                group.members.forEach(id => {
+                    memArea.innerHTML += `<div class="list-item"><span>${id}</span> <span class="del-x" onclick="removeMember('${id}', '${group.id}')">X</span></div>`;
+                });
+            }
+            container.appendChild(section);
+        });
+
+        if(dashboardData.ungrouped.length > 0) {
+            const section = document.createElement('div');
+            section.className = 'group-section';
+            section.innerHTML = `<div class="group-header"><span class="group-title">기타 (미분류)</span></div><div class="members-area"></div>`;
+            const memArea = section.querySelector('.members-area');
+            dashboardData.ungrouped.forEach(id => {
+                memArea.innerHTML += `<div class="list-item"><span>${id}</span> <span class="del-x" onclick="removeMember('${id}', 'ungrouped')">X</span></div>`;
+            });
+            container.appendChild(section);
+        }
+        updateSelectBox();
+    }
+
+    function saveData() { localStorage.setItem('myStreamerData', JSON.stringify(dashboardData)); renderManager(); }
+    function addNewGroup() { const name = document.getElementById('new-group-name').value; if(!name) return; dashboardData.groups.push({ id: 'g_'+Date.now(), name: name, members: [] }); document.getElementById('new-group-name').value = ''; saveData(); }
+    function renameGroup(idx) { const n = prompt("새 이름:", dashboardData.groups[idx].name); if(n) { dashboardData.groups[idx].name = n; saveData(); } }
+    function deleteGroup(idx) { if(!confirm("삭제?")) return; dashboardData.ungrouped.push(...dashboardData.groups[idx].members); dashboardData.groups.splice(idx, 1); saveData(); }
+    function moveGroup(idx, dir) { const n = idx + dir; if(n < 0 || n >= dashboardData.groups.length) return; [dashboardData.groups[idx], dashboardData.groups[n]] = [dashboardData.groups[n], dashboardData.groups[idx]]; saveData(); }
+    function addStreamer() { const id = document.getElementById('new-streamer-id').value; const gid = document.getElementById('group-select').value; if(!id) return; if(gid === 'ungrouped') { if(!dashboardData.ungrouped.includes(id)) dashboardData.ungrouped.push(id); } else { const g = dashboardData.groups.find(x => x.id === gid); if(g && !g.members.includes(id)) g.members.push(id); } document.getElementById('new-streamer-id').value = ''; saveData(); }
+    function removeMember(id, gid) { if(!confirm("삭제?")) return; if(gid === 'ungrouped') dashboardData.ungrouped = dashboardData.ungrouped.filter(x => x !== id); else { const g = dashboardData.groups.find(x => x.id === gid); if(g) g.members = g.members.filter(x => x !== id); } saveData(); }
+    function updateSelectBox() { const sel = document.getElementById('group-select'); sel.innerHTML = ''; dashboardData.groups.forEach(g => sel.innerHTML += `<option value="${g.id}">${g.name}</option>`); sel.innerHTML += `<option value="ungrouped">기타 (미분류)</option>`; }
+    function downloadJson() { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dashboardData, null, 2)); a.download = "list.json"; document.body.appendChild(a); a.click(); a.remove(); alert("다운로드된 파일로 GitHub list.json을 교체하세요!"); }
+
+    init();
+</script>
+
+</body>
+</html>
