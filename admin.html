@@ -159,15 +159,23 @@
 
     // 3. [STEP 2] 리스트업 (Draft)
     // admin.html 내부 lookupAndAdd 함수 수정
+// admin.html 내부 스크립트
 async function lookupAndAdd() {
-    // ... (앞부분 동일) ...
+    // 1. 여기서 값을 가져올 때 변수명을 'id'로 해야 합니다.
+    const id = document.getElementById('inpId').value.trim(); // (inpId는 input 태그 ID)
+    const platform = document.getElementById('selPlatform').value;
+    const group_name = document.getElementById('selGroup').value;
+
+    // ... (중략) ...
 
     try {
         const res = await fetch('/api/lookup', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ id, platform })
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'},
+            // 2. 보낼 때도 'id' 라는 이름으로 보내야 서버가 받습니다.
+            body: JSON.stringify({ id, platform }) 
         });
-        
+            
         // [추가됨] 서버가 에러를 뱉었는지 확인
         if (!res.ok) {
             const errData = await res.json();
