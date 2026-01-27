@@ -7,35 +7,43 @@
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         /* [기본 스타일] */
-        body { margin: 0; background: #f8f9fa; font-family: 'Pretendard', sans-serif; overflow: hidden; height: 100vh; }
-        .container { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; }
+        body { margin: 0; background: #f4f6f8; font-family: 'Pretendard', sans-serif; overflow-y: auto; overflow-x: hidden; }
+        .container { width: 100%; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
 
+        /* [관리자 버튼] 우측 상단 고정 */
         .admin-link { position: fixed; top: 20px; right: 20px; font-size: 1.5rem; text-decoration: none; opacity: 0.3; z-index: 2000; transition: 0.3s; }
         .admin-link:hover { opacity: 1; transform: rotate(90deg); }
 
         /* =========================================
-           [1. 헤더] 높이 최소화
+           [1. 헤더] 타이틀 & 갱신 버튼
            ========================================= */
         header {
-            flex: 0 0 auto; /* 고정 높이 */
-            width: 100%; background: #fff; padding: 15px 0; text-align: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 100;
+            width: 100%; background: #fff; padding: 20px 0; text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); z-index: 100; position: sticky; top: 0;
         }
-        h1 { margin: 0 0 5px 0; font-size: 1.8rem; font-weight: 900; background: linear-gradient(90deg, #ff6b6b, #4ecdc4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        h1 {
+            margin: 0 0 10px 0; font-size: 2rem; font-weight: 900; letter-spacing: -1px;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
 
         .refresh-btn {
-            background: #495057; color: #fff; border: none; padding: 5px 15px; border-radius: 15px;
-            font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: 0.2s;
+            background: #343a40; color: #fff; border: none; padding: 8px 20px; border-radius: 20px;
+            font-size: 0.9rem; font-weight: bold; cursor: pointer; transition: 0.2s;
+            display: inline-flex; align-items: center; gap: 5px;
         }
-        .refresh-btn:hover { background: #212529; transform: scale(1.05); }
+        .refresh-btn:hover { background: #495057; transform: scale(1.05); }
 
         /* =========================================
-           [2. 메인 영역] 풍선 (화면의 65% 할당)
+           [2. 메인 영역] 풍선 & 카드 (Canvas)
            ========================================= */
         #main-area {
-            flex: 6.5; /* 비율 할당 */
-            width: 100%; position: relative; overflow: hidden;
+            position: relative;
+            width: 100%;
+            height: 85vh; /* 화면의 85% 높이 차지 */
+            min-height: 800px; /* 최소 높이 보장 (잘림 방지) */
             background: radial-gradient(circle at center, #ffffff 0%, #f1f3f5 100%);
+            overflow: hidden; /* 내부 SVG 스크롤 방지 */
             border-bottom: 1px solid #ddd;
         }
         
@@ -43,64 +51,71 @@
         #card-overlay { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 2; pointer-events: none; }
 
         /* =========================================
-           [3. 하단 영역] 미분류 (화면의 35% 할당)
+           [3. 하단 영역] 미분류 테이블
            ========================================= */
         #footer-area {
-            flex: 3.5; /* 비율 할당 */
-            width: 100%; background: #fff; overflow-y: auto; /* 내용 많으면 스크롤 */
-            display: flex; flex-direction: column; align-items: center; padding: 20px 0;
-            box-shadow: 0 -5px 15px rgba(0,0,0,0.03);
+            width: 90%; max-width: 1200px;
+            background: #fff; border-radius: 15px;
+            margin: 30px 0 50px 0; padding: 25px;
+            border: 1px solid #e9ecef; box-shadow: 0 -5px 15px rgba(0,0,0,0.02);
+            z-index: 10;
         }
-        .footer-content { width: 90%; max-width: 1400px; text-align: center; }
-        .footer-header { margin-bottom: 15px; display: inline-flex; align-items: center; gap: 10px; border-bottom: 2px solid #eee; padding-bottom: 5px; }
-        .footer-title { font-size: 1.1rem; font-weight: bold; color: #555; }
-        .badge-count { background: #ced4da; color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; font-weight: bold; }
+        .footer-header { 
+            border-bottom: 2px solid #f1f3f5; padding-bottom: 15px; margin-bottom: 20px;
+            display: flex; align-items: center; gap: 10px; justify-content: center;
+        }
+        .footer-title { font-size: 1.1rem; font-weight: bold; color: #495057; }
+        .badge-count { background: #dee2e6; color: #495057; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; font-weight: bold; }
         
-        .no-group-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+        .no-group-grid { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; }
 
         /* =========================================
-           [카드 스타일] 컴팩트하게 조정
+           [카드 스타일]
            ========================================= */
         .card {
-            position: absolute; /* 메인 영역용 */
+            position: absolute; /* 메인 영역에서는 절대 좌표 */
             width: 90px; height: 120px; 
             background: #fff; border-radius: 10px;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.08);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.08);
             display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-            padding-top: 10px; box-sizing: border-box;
+            padding-top: 12px; box-sizing: border-box;
             border: 2px solid transparent; cursor: pointer; pointer-events: auto;
-            transition: transform 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-        .card:hover { transform: scale(1.08); z-index: 100; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-color: #ddd;}
+        .card:hover { transform: scale(1.1); z-index: 100; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-color: #ced4da; }
 
         /* 하단 미분류 카드는 상대 좌표 */
-        .no-group-grid .card { position: relative; left: auto !important; top: auto !important; transform: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .no-group-grid .card:hover { transform: translateY(-3px); }
+        .no-group-grid .card { position: relative; left: auto !important; top: auto !important; transform: none; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .no-group-grid .card:hover { transform: translateY(-5px); }
 
-        .profile-img { width: 65px; height: 65px; border-radius: 50%; object-fit: cover; border: 2px solid #f8f9fa; margin-bottom: 6px; background: #eee; }
+        .profile-img { width: 65px; height: 65px; border-radius: 50%; object-fit: cover; border: 2px solid #f8f9fa; margin-bottom: 8px; background: #eee; }
         
         .pf-badge {
-            position: absolute; top: 60px; right: 14px; width: 18px; height: 18px; border-radius: 50%;
+            position: absolute; top: 62px; right: 14px; width: 18px; height: 18px; border-radius: 50%;
             color: #fff; font-size: 9px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 2px solid #fff;
         }
         .soop { background: #42C769; } .chzzk { background: #00E59D; color:#333; }
 
         .name-tag { font-size: 0.85rem; font-weight: bold; color: #333; width: 85px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+        /* 라이브 상태 */
         .is-live { border-color: #ff4757 !important; background: #fff5f5; }
         .is-live .profile-img { border-color: #ff4757; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,71,87,0.6); } 70% { box-shadow: 0 0 0 8px rgba(255,71,87,0); } 100% { box-shadow: 0 0 0 0 rgba(255,71,87,0); } }
 
-        /* 풍선 스타일 */
+        /* 풍선(Hull) 스타일 */
         .group-hull { fill-opacity: 0.08; stroke-linejoin: round; stroke-linecap: round; mix-blend-mode: multiply; transition: d 0.5s ease; }
-        .group-label { font-size: 14px; font-weight: 800; fill: #444; text-anchor: middle; text-shadow: 2px 2px 0 #fff; pointer-events: none; user-select: none; }
+        .group-label { font-size: 14px; font-weight: 800; fill: #343a40; text-anchor: middle; text-shadow: 2px 2px 0 #fff; pointer-events: none; user-select: none; }
     </style>
 </head>
 <body>
 
+<div class="container">
     <header>
         <h1>유앤아이매방랑 스트리머 현황판</h1>
-        <button class="refresh-btn" onclick="refreshData()">🔄 새로고침</button>
+        <button class="refresh-btn" onclick="location.reload()">
+            <span>🔄</span> 데이터 갱신
+        </button>
     </header>
 
     <a href="admin.html" class="admin-link">⚙️</a>
@@ -110,38 +125,20 @@
         <div id="card-overlay"></div>
     </div>
 
-    <div id="footer-area">
-        <div class="footer-content">
-            <div class="footer-header">
-                <span class="footer-title">📂 미분류 스트리머</span>
-                <span id="no-group-cnt" class="badge-count">0</span>
-            </div>
-            <div id="no-group-grid" class="no-group-grid"></div>
+    <div id="footer-area" style="display:none;">
+        <div class="footer-header">
+            <span class="footer-title">📂 미분류 스트리머</span>
+            <span id="no-group-cnt" class="badge-count">0</span>
         </div>
+        <div id="no-group-grid" class="no-group-grid"></div>
     </div>
+</div>
 
 <script>
-    // [설정: 카드 크기 및 그리드]
+    // [설정값]
     const CARD_W = 100; 
     const CARD_H = 130; 
-    
-    // [설정: 그룹 내부 가로 열 개수] 
-    // 이 값을 조정하면 풍선의 가로/세로 비율이 바뀝니다.
-    const FIXED_COLS = 5; 
-
-    // 화면 중앙 좌표 (초기값)
-    let centerX = window.innerWidth / 2;
-    let centerY = window.innerHeight / 2;
-
-    window.addEventListener('resize', () => {
-        centerX = window.innerWidth / 2;
-        centerY = window.innerHeight / 2;
-        // 리사이즈 시 재정렬은 복잡하므로 새로고침 유도하거나 생략
-    });
-
-    function refreshData() {
-        location.reload(); // 가장 깔끔하게 초기화
-    }
+    const FIXED_COLS = 5; // 풍선 내 가로 줄 카드 개수 (5개씩 줄바꿈)
 
     async function init() {
         try {
@@ -149,10 +146,10 @@
             const data = await res.json();
             if (!data || data.length === 0) return;
 
-            // 1. 데이터 분류 (정렬 포함)
-            // 닉네임 순으로 정렬하여 언제나 같은 순서 보장 (위치 고정의 핵심 1)
+            // [중요] 이름순 정렬 (위치 고정을 위해 필수)
             data.sort((a, b) => a.nickname.localeCompare(b.nickname));
 
+            // 데이터 분류
             const gridNodes = [];
             const noGroupNodes = [];
 
@@ -162,10 +159,9 @@
                 else noGroupNodes.push(m);
             });
 
-            // 2. 미분류 영역 렌더링
+            // 렌더링 실행
             renderNoGroup(noGroupNodes);
-
-            // 3. 풍선 영역 계산 및 렌더링
+            
             if(gridNodes.length > 0) {
                 calculateLayout(gridNodes);
             }
@@ -175,74 +171,70 @@
         } catch (e) { console.error("로딩 실패:", e); }
     }
 
-    // [핵심 로직] 클러스터 물리 시뮬레이션 + 내부 그리드 고정
+    // [핵심 로직] 클러스터 물리 계산 + 내부 그리드 고정
     function calculateLayout(nodes) {
-        // (1) 메타 그룹(Cluster) 생성
-        // 예: "A그룹", "B그룹", "A그룹+B그룹(교집합)"
+        // 1. 클러스터(Cluster) 생성
+        // "A그룹+B그룹" 같은 교집합 키를 생성하여 묶음
         const clusterMap = {};
 
         nodes.forEach(node => {
-            // 그룹 이름을 정렬해서 Key로 사용 -> "A, B" 와 "B, A"는 같은 그룹으로 처리
             const groupKey = node._groups.sort().join(' + ');
             if(!clusterMap[groupKey]) {
                 clusterMap[groupKey] = {
                     name: groupKey,
                     members: [],
-                    isIntersection: node._groups.length > 1, // 교집합 여부
-                    relatedGroups: node._groups // ["A", "B"]
+                    isIntersection: node._groups.length > 1,
+                    relatedGroups: node._groups
                 };
             }
             clusterMap[groupKey].members.push(node);
         });
 
-        // 클러스터 리스트 변환
         const clusters = Object.values(clusterMap);
 
-        // (2) 클러스터의 크기(반지름) 미리 계산
+        // 2. 화면 중앙 좌표 구하기
+        const mainArea = document.getElementById('main-area');
+        const centerX = mainArea.offsetWidth / 2;
+        const centerY = mainArea.offsetHeight / 2;
+
+        // 3. 클러스터 크기 미리 계산 및 초기화
         clusters.forEach(cluster => {
             const count = cluster.members.length;
-            // 내부 그리드 배치 계산
-            const cols = Math.min(count, FIXED_COLS); // 최대 5~6열
+            const cols = Math.min(count, FIXED_COLS);
             const rows = Math.ceil(count / cols);
             
             cluster.width = cols * CARD_W;
             cluster.height = rows * CARD_H;
-            // 물리 엔진에서 사용할 반지름 (충돌 방지용)
-            cluster.r = Math.sqrt(cluster.width*cluster.width + cluster.height*cluster.height) / 2 + 30; // 여유 30px
+            cluster.r = Math.sqrt(cluster.width**2 + cluster.height**2) / 2 + 50; // 반지름 (충돌 계산용)
             
-            // 초기 위치: 화면 중앙으로 고정 (Random 제거 -> 위치 고정의 핵심 2)
-            cluster.x = centerX; 
+            // 초기 위치를 화면 정중앙으로 고정 (Random X)
+            cluster.x = centerX;
             cluster.y = centerY;
         });
 
-        // (3) 클러스터 간의 '링크' 생성 (교집합 배치를 위해)
-        // A+B 클러스터는 A 클러스터와 B 클러스터에 연결함
+        // 4. 교집합 링크 생성 (A+B는 A와 B 사이로 당겨짐)
         const links = [];
-        clusters.forEach((cluster, i) => {
+        clusters.forEach(cluster => {
             if(cluster.isIntersection) {
-                // 교집합 클러스터라면, 구성 요소인 단일 클러스터들을 찾아 연결
                 cluster.relatedGroups.forEach(gName => {
                     const target = clusters.find(c => c.name === gName);
-                    if(target) {
-                        links.push({ source: cluster, target: target });
-                    }
+                    if(target) links.push({ source: cluster, target: target });
                 });
             }
         });
 
-        // (4) 클러스터 배치 시뮬레이션 (보이지 않게 실행)
+        // 5. 물리 시뮬레이션 (보이지 않게 실행)
         const simulation = d3.forceSimulation(clusters)
-            .force("charge", d3.forceManyBody().strength(-300)) // 서로 밀어내기
-            .force("collide", d3.forceCollide(d => d.r).iterations(4)) // 겹침 방지 (중요)
-            .force("center", d3.forceCenter(centerX, centerY).strength(0.05)) // 중앙 정렬
-            .force("link", d3.forceLink(links).strength(1).distance(d => d.source.r + d.target.r + 50)) // 교집합을 사이로 당김
+            .force("center", d3.forceCenter(centerX, centerY).strength(0.1)) // 중앙 정렬
+            .force("charge", d3.forceManyBody().strength(-200)) // 서로 밀어내기
+            .force("collide", d3.forceCollide(d => d.r).iterations(4)) // 겹침 방지
+            .force("link", d3.forceLink(links).strength(1).distance(d => d.source.r + d.target.r + 30)) // 교집합 연결
             .stop();
 
-        // 시뮬레이션 '빨리감기' (300회 반복)
-        // 랜덤성 없이 중앙에서 시작했으므로 결과는 항상 동일함
+        // 300회 '빨리감기' (결과값만 도출)
         for(let i=0; i<300; ++i) simulation.tick();
 
-        // (5) 최종 렌더링
+        // 6. 최종 그리기
         renderClusters(clusters);
     }
 
@@ -251,68 +243,64 @@
         const overlay = document.getElementById('card-overlay');
         const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
 
-        // 큰 풍선을 먼저 그리기 위해 정렬 (Size Descending)
+        // 큰 풍선을 먼저 그려서 뒤로 보내기
         clusters.sort((a,b) => b.members.length - a.members.length);
 
         clusters.forEach(cluster => {
-            // (5-1) 멤버들 그리드 배치 (Grid Layout)
-            // 클러스터 중심점(cluster.x, cluster.y)을 기준으로 그리드 형성
-            const memberCount = cluster.members.length;
-            const cols = Math.min(memberCount, FIXED_COLS);
-            
-            // 전체 그리드 크기
+            // (1) 멤버들을 그리드 좌표에 배치
+            const count = cluster.members.length;
+            const cols = Math.min(count, FIXED_COLS);
             const gridW = cols * CARD_W;
-            const gridH = Math.ceil(memberCount / cols) * CARD_H;
+            const gridH = Math.ceil(count / cols) * CARD_H;
             
-            // 시작점 (좌상단)
+            // 그리드 시작점 (클러스터 중심 기준 좌상단)
             const startX = cluster.x - gridW / 2;
             const startY = cluster.y - gridH / 2;
+            
+            let hullPoints = [];
 
-            const hullPoints = []; // 풍선 그리기용 좌표
-
-            cluster.members.forEach((member, i) => {
+            cluster.members.forEach((m, i) => {
                 const col = i % cols;
                 const row = Math.floor(i / cols);
+                
+                // 최종 좌표
+                const x = startX + col * CARD_W + CARD_W/2;
+                const y = startY + row * CARD_H + CARD_H/2;
 
-                // 최종 좌표 확정
-                const finalX = startX + col * CARD_W + CARD_W/2; // 카드 중심 X
-                const finalY = startY + row * CARD_H + CARD_H/2; // 카드 중심 Y
-
-                // 카드 DOM 생성
+                // 카드 생성
                 const card = document.createElement('div');
                 card.className = 'card';
-                card.setAttribute('data-id', member.id);
-                card.style.left = (finalX - 45) + "px"; // width/2 보정
-                card.style.top = (finalY - 60) + "px"; // height/2 보정
-                card.innerHTML = getCardHTML(member);
-                card.onclick = () => openLink(member);
+                card.setAttribute('data-id', m.id);
+                // 중심점 기준 정렬 보정 (width:100 -> 50, height:130 -> 65)
+                card.style.left = (x - 50) + "px"; 
+                card.style.top = (y - 65) + "px";
+                card.innerHTML = getCardHTML(m);
+                card.onclick = () => openLink(m);
                 overlay.appendChild(card);
 
-                // Hull 포인트 수집 (네 모서리 + 여유)
-                const p = 15; // padding
-                const hw = 45 + p; // half width
-                const hh = 60 + p; // half height
-                hullPoints.push([finalX - hw, finalY - hh]);
-                hullPoints.push([finalX + hw, finalY - hh]);
-                hullPoints.push([finalX + hw, finalY + hh]);
-                hullPoints.push([finalX - hw, finalY + hh]);
+                // Hull 포인트 수집 (카드 모서리)
+                const p = 20; // 패딩
+                hullPoints.push([x - 50 - p, y - 65 - p]);
+                hullPoints.push([x + 50 + p, y - 65 - p]);
+                hullPoints.push([x + 50 + p, y + 65 + p]);
+                hullPoints.push([x - 50 - p, y + 65 + p]);
             });
 
-            // (5-2) 풍선 그리기
+            // (2) 풍선 그리기
             if(hullPoints.length > 0) {
                 const hull = d3.polygonHull(hullPoints);
                 if(hull) {
                     const color = colorScale(cluster.name);
-                    const line = d3.line().curve(d3.curveCatmullRomClosed.alpha(0.5)); // 부드러운 곡선
+                    const line = d3.line().curve(d3.curveCatmullRomClosed.alpha(0.5));
 
                     svg.append("path")
                         .attr("d", line(hull))
                         .attr("class", "group-hull")
                         .attr("fill", color)
                         .attr("stroke", color)
-                        .attr("stroke-width", 20); // 두께
+                        .attr("stroke-width", 20);
 
-                    // 라벨
+                    // 그룹 라벨
                     const topY = d3.min(hull, d=>d[1]);
                     const centerX = d3.mean(hull, d=>d[0]);
                     
@@ -331,10 +319,7 @@
         const grid = document.getElementById('no-group-grid');
         const cnt = document.getElementById('no-group-cnt');
         
-        if(list.length === 0) {
-            area.style.display = 'none';
-            return;
-        }
+        if(list.length === 0) { area.style.display = 'none'; return; }
         
         area.style.display = 'block';
         cnt.innerText = list.length;
@@ -349,7 +334,7 @@
         });
     }
 
-    // [공통 유틸]
+    // 유틸리티
     function getCardHTML(d) {
         const isSoop = (d.platform==='soop'||d.platform==='afreeca');
         return `
