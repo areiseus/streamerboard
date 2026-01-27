@@ -27,11 +27,10 @@
             padding: 50px;
         }
 
-        /* [컨텐츠 래퍼] */
         #content-wrapper {
             position: relative;
-            /* COLS(5) * GRID_W(280) = 1400px */
-            width: 1400px; 
+            /* 간격이 넓어져서 폭도 증가 */
+            width: 1500px; 
             min-height: 800px;
         }
 
@@ -52,12 +51,13 @@
            ========================================================================== */
         .card {
             position: absolute; 
-            width: 210px; height: 160px;
+            width: 210px; 
+            height: 180px; /* [수정] 높이 증가 (닉네임 공간 확보) */
             background: #fff; border-radius: 12px; 
             border: 3px solid #ddd; /* 테두리 두껍게 */
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
             display: flex; flex-direction: row; 
-            padding: 10px; box-sizing: border-box;
+            padding: 12px; box-sizing: border-box;
             cursor: pointer; transition: transform 0.2s, top 0.5s, left 0.5s;
             z-index: 10; overflow: hidden;
         }
@@ -66,7 +66,7 @@
         /* Left: Info */
         .card-left {
             flex: 0 0 90px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-            border-right: 1px dashed #eee; padding-right: 5px;
+            border-right: 1px dashed #eee; padding-right: 8px; margin-right: 8px;
         }
         .pf-text { font-size: 0.7rem; font-style: italic; color: #888; margin-bottom: 4px; font-weight: bold;}
         .img-wrap { position: relative; width: 60px; height: 60px; margin-bottom: 5px; }
@@ -78,16 +78,26 @@
             padding: 2px 6px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
-        .nick { font-size: 0.85rem; font-weight: 800; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; margin-bottom: 2px; }
-        .id-text { font-size: 0.7rem; color: #999; margin-bottom: 4px; }
+        /* [수정] 닉네임 스타일: 줄바꿈 허용 */
+        .nick { 
+            font-size: 0.85rem; font-weight: 800; color: #333; 
+            text-align: center; line-height: 1.2;
+            word-break: keep-all; /* 단어 단위 줄바꿈 */
+            overflow: hidden; 
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; /* 최대 2줄 */
+            margin-bottom: 4px;
+            height: 2.4em; /* 2줄 높이 확보 */
+        }
         
-        /* [수정] 애청자 수 (항상 표시) */
-        .fan-cnt { font-size: 0.75rem; color: #555; font-weight: bold; margin-top: auto; }
+        .id-text { font-size: 0.65rem; color: #999; margin-bottom: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        
+        /* 애청자 수 */
+        .fan-cnt { font-size: 0.7rem; color: #555; font-weight: bold; margin-top: 5px; }
 
         /* Right: Groups & Buttons */
-        .card-right { flex: 1; display: flex; flex-direction: column; padding-left: 8px; justify-content: space-between; }
+        .card-right { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .group-list {
-            flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-bottom: 5px;
+            flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px;
             scrollbar-width: thin;
         }
         .group-list::-webkit-scrollbar { width: 3px; }
@@ -100,7 +110,7 @@
         .btn-row { display: flex; gap: 5px; }
         .action-btn {
             flex: 1; border: 1px solid #ddd; background: #f8f9fa; color: #555;
-            font-size: 0.7rem; padding: 4px 0; border-radius: 4px; cursor: pointer; transition: 0.2s;
+            font-size: 0.7rem; padding: 5px 0; border-radius: 4px; cursor: pointer; transition: 0.2s;
         }
         .action-btn:hover { background: #e2e6ea; }
 
@@ -108,12 +118,10 @@
         .card.is-live { border-color: #ff4757; background: #fff5f5; }
         .card.is-live .profile-img { border-color: #ff4757; }
         .card.is-live .live-badge { display: block; }
-        /* .card.is-live .fan-cnt { color: #ff4757; } */ /* 애청자는 굳이 빨간색일 필요 없음 */
 
-        /* Footer Cards */
         .no-group-grid .card { position: relative; left: auto !important; top: auto !important; }
 
-        /* 풍선 스타일 */
+        /* [수정] 풍선 스타일 */
         .group-hull { 
             fill-opacity: 0.05; 
             stroke-linejoin: round; 
@@ -124,14 +132,14 @@
         .group-label { 
             font-size: 15px; 
             font-weight: 900; 
-            fill: #333; 
+            fill: #222; 
             text-anchor: middle; 
             pointer-events: none; 
             user-select: none;
-            /* 라벨 가독성 */
+            /* 라벨 가독성 (외곽선) */
             paint-order: stroke;
-            stroke: #f4f6f8; 
-            stroke-width: 4px;
+            stroke: rgba(255,255,255,0.9); 
+            stroke-width: 6px;
             stroke-linecap: round;
             stroke-linejoin: round;
         }
@@ -160,12 +168,13 @@
 </div>
 
 <script>
-    // [설정] 간격 유지
+    // [설정] 카드 크기 및 간격 수정
     const COLS = 5;
     const CARD_W = 210;
-    const CARD_H = 160;
-    const GRID_W = 280; 
-    const GRID_H = 240; 
+    const CARD_H = 180; // [수정] 높이 180
+    // [수정] 그리드 간격 확대 (풍선 공간 확보)
+    const GRID_W = 300; // 좌우 간격 넉넉하게
+    const GRID_H = 260; // 상하 간격 넉넉하게
 
     async function init() {
         try {
@@ -173,7 +182,6 @@
             const data = await res.json();
             if (!data || data.length === 0) return;
 
-            // [Rule 0] ID 알파벳순
             data.sort((a, b) => a.id.localeCompare(b.id));
 
             const groupedNodes = [];
@@ -396,10 +404,9 @@
         const isSoop = (pf === 'soop' || pf === 'afreeca');
         const platformName = isSoop ? 'SOOP' : 'CHZZK';
         
-        // 치지직이면 ID 숨김
-        const idDisplay = (!isSoop) ? 'display:none;' : '';
+        // [수정] 치지직이면 ID 숨김
+        const idDisplay = (!isSoop) ? 'visibility:hidden;' : '';
 
-        // 그룹 리스트
         let groupListHTML = '';
         if(d._groups && d._groups.length > 0) {
             d._groups.forEach(g => {
@@ -453,6 +460,9 @@
         const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
 
         const drawOrder = [...chain].sort((a, b) => b.size - a.size);
+        
+        // 라벨 충돌 방지용 위치 저장 배열
+        const labelPositions = [];
 
         drawOrder.forEach(g => {
             let points = [];
@@ -461,14 +471,15 @@
             g.members.forEach(m => {
                 if(posMap.has(m.id)) {
                     const pos = posMap.get(m.id);
-                    // 패딩: 간격이 넓어졌으므로 패딩도 조금 넉넉하게
-                    const padding = 15 + (g.size * 2); 
+                    // [수정] 패딩 조절 (밀착형)
+                    const padding = 10 + (g.size * 1.5); 
                     
                     const x = pos.finalX; 
                     const y = pos.finalY;
                     const w = CARD_W; 
                     const h = CARD_H;
 
+                    // [수정] 모서리에 점을 추가하여 카드 윤곽을 타이트하게 감쌈
                     points.push([x - padding, y - padding]);       
                     points.push([x + w + padding, y - padding]);   
                     points.push([x + w + padding, y + h + padding]); 
@@ -482,23 +493,45 @@
             const hull = d3.polygonHull(points);
             if(hull) {
                 const color = colorScale(g.name);
-                // 부드러운 곡선
-                const line = d3.line().curve(d3.curveCatmullRomClosed.alpha(0.5));
+                // [수정] 곡선 텐션 조절 (alpha 0.9 -> 타이트하게)
+                const line = d3.line().curve(d3.curveCatmullRomClosed.alpha(0.9));
 
                 svg.append("path")
                     .attr("d", line(hull))
                     .attr("class", "group-hull")
                     .attr("fill", color)
                     .attr("stroke", color)
-                    .attr("stroke-width", 6 + g.size); 
+                    // [수정] 두께 축소
+                    .attr("stroke-width", 5 + g.size); 
 
+                // 라벨 위치 계산
                 const topY = d3.min(hull, d=>d[1]);
-                const centerX = d3.mean(hull, d=>d[0]);
+                let centerX = d3.mean(hull, d=>d[0]);
+                let labelY = topY - 10;
+
+                // [수정] 라벨 충돌 방지 로직
+                // 기존 라벨들과 비교하여 너무 가까우면 위치 조정
+                let overlap = true;
+                let tries = 0;
+                while(overlap && tries < 10) {
+                    overlap = false;
+                    for(let l of labelPositions) {
+                        // X축이 가깝고 Y축도 가까우면 겹침
+                        if(Math.abs(l.x - centerX) < 100 && Math.abs(l.y - labelY) < 30) {
+                            overlap = true;
+                            labelY -= 30; // 위로 이동
+                            break;
+                        }
+                    }
+                    tries++;
+                }
                 
+                labelPositions.push({x: centerX, y: labelY});
+
                 svg.append("text")
                     .attr("class", "group-label")
                     .attr("x", centerX)
-                    .attr("y", topY - 10)
+                    .attr("y", labelY)
                     .text(g.name);
             }
         });
@@ -534,7 +567,6 @@
         return Array.from(set);
     }
 
-    // [수정] 애청자 수(favorites) 업데이트
     async function checkLive(data) {
         const uniqueIds = [...new Set(data.map(m=>m.id))];
         const targets = uniqueIds.map(id => {
@@ -548,8 +580,7 @@
             results.forEach(r => {
                 const cards = document.querySelectorAll(`.card[data-id="${r.id}"]`);
                 cards.forEach(c => {
-                    // 애청자(Favorites) 업데이트: API에 favorites 필드가 있다고 가정
-                    // 없으면 viewers라도 찍도록 fallback 처리 (필요시 제거)
+                    // [수정] 애청자 수 (favorites) 업데이트
                     const fanCount = r.favorites || 0; 
                     const fanEl = c.querySelector('.fan-cnt');
                     if(fanEl) fanEl.innerText = `애청자: ${fanCount.toLocaleString()}`;
