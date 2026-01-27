@@ -1,24 +1,23 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-    process.env.streamer_db_URL,
-    process.env.streamer_dbkey_anon
-);
-
 export default async function handler(req, res) {
     try {
-        // 1. DB에서 모든 스트리머 정보를 가져옵니다.
+        // ✅ [옮기기] 여기! 함수 안으로 이사를 시키십시오.
+        // (형님이 설정한 변수명 그대로 넣었습니다)
+        const supabase = createClient(
+            process.env.streamer_db_URL,
+            process.env.streamer_dbkey_anon
+        );
+
+        // ... 아래 코드는 건드리지 마세요 ...
         const { data, error } = await supabase
             .from('streamers')
             .select('*')
-            .order('is_active', { ascending: false }); // 활성화된 순서대로
+            .order('is_active', { ascending: false });
 
         if (error) throw error;
-
-        // 2. 프론트엔드에 전달
         res.status(200).json(data);
 
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        // 이제 에러가 나면 화면에 범인이 나옵니다!
+        res.status(500).json({ error: error.message }); 
     }
 }
