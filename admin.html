@@ -1,9 +1,8 @@
 <!DOCTYPE html>
-
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>관리자 페이지</title>
+    <title>관리자 페이지 (통합)</title>
     <style>
         /* [기본 설정] */
         body { background: #222; color: #fff; padding: 20px; font-family: 'Pretendard', sans-serif; max-width: 1200px; margin: 0 auto; padding-bottom: 100px; }
@@ -12,16 +11,12 @@
         #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .login-box { background: #333; padding: 40px; border-radius: 10px; border: 1px solid #555; text-align: center; width: 300px; }
         
-        /* [패널 공통 스타일] - 그냥 박스입니다. */
+        /* [패널 공통] */
         #adminContent { display: none; }
         .panel { 
-            display: block; /* 무조건 보임 */
-            background: #333; 
-            padding: 20px; 
-            border-radius: 10px; 
-            margin-bottom: 20px; /* 박스 사이 간격 */
-            border: 1px solid #444; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            display: block; background: #333; padding: 20px; 
+            border-radius: 10px; margin-bottom: 20px; 
+            border: 1px solid #444; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
         
         /* [입력 도구] */
@@ -41,21 +36,18 @@
         .step-box { border-left: 5px solid #3498db; padding-left: 15px; margin-bottom: 20px; }
         .btn-delete { background: #c0392b; font-size: 0.8rem; padding: 5px 10px; margin-left: 5px; }
 
-        /* ★★★ [로그창 스타일] ★★★ */
-        /* display: block으로 박아놨으니 안 보일 수가 없음 */
+        /* [로그창 스타일] */
         #static-log-window {
-            display: block; 
-            height: 200px;            /* 높이 고정 */
-            overflow-y: scroll;       /* 스크롤바 */
-            background-color: #000;   /* 검은 배경 */
-            padding: 15px;
-            border: 1px solid #555;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-            color: #0f0; /* 글자색 초록색 */
-            line-height: 1.6;
-            white-space: pre-wrap;
+            display: block; height: 200px; overflow-y: scroll;
+            background-color: #000; padding: 15px; border: 1px solid #555;
+            font-family: 'Courier New', monospace; font-size: 13px; color: #0f0;
+            line-height: 1.6; white-space: pre-wrap;
         }
+
+        /* [신규 추가: 수정 폼 스타일] */
+        #editFormArea { display: none; background: #2a2a2a; padding: 15px; margin-top: 10px; border-radius: 8px; border: 1px dashed #777; }
+        .edit-label { display: block; margin-top: 10px; color: #aaa; font-size: 0.9rem; }
+        .readonly-input { background: #222; color: #777; border: 1px solid #333; }
     </style>
 </head>
 <body>
@@ -74,10 +66,63 @@
             <a href="index.html" style="color:#aaa; text-decoration:none; font-size:1.5rem;">🏠</a>
         </div>
 
+        <div class="panel" style="border: 2px solid #f1c40f;">
+            <h3>🔍 회원 정보 개별 수정 (그룹 1,2,3)</h3>
+            
+            <div style="display:flex; gap:10px; align-items:center;">
+                <input type="text" id="searchNick" placeholder="닉네임 입력 (정확히 입력)" style="width: 200px;">
+                <button onclick="searchUser()" style="background:#f39c12;">검색</button>
+            </div>
+
+            <div id="editFormArea">
+                <h4 style="margin: 0 0 10px 0; border-bottom: 1px solid #555; padding-bottom: 5px;">📝 수정하기</h4>
+                
+                <div style="display:flex; gap: 10px;">
+                    <div style="flex:1">
+                        <span class="edit-label">ID (수정불가)</span>
+                        <input type="text" id="editTargetId" class="readonly-input" readonly style="width:100%">
+                    </div>
+                    <div style="flex:1">
+                        <span class="edit-label">닉네임</span>
+                        <input type="text" id="editViewNick" class="readonly-input" readonly style="width:100%">
+                    </div>
+                    <div style="flex:1">
+                        <span class="edit-label">플랫폼</span>
+                        <select id="editPlatform" style="width:100%">
+                            <option value="soop">SOOP</option>
+                            <option value="chzzk">CHZZK</option>
+                        </select>
+                    </div>
+                </div>
+
+                <span class="edit-label" style="color:#fff;">📁 통합 그룹명 (기존 group_name)</span>
+                <input type="text" id="editGroupName" style="width:100%;" placeholder="예: 1기, 2기 (쉼표 구분)">
+
+                <div style="display:flex; gap:10px; margin-top:5px;">
+                    <div style="flex:1">
+                        <span class="edit-label">그룹 1</span>
+                        <input type="text" id="editG1" style="width:100%">
+                    </div>
+                    <div style="flex:1">
+                        <span class="edit-label">그룹 2</span>
+                        <input type="text" id="editG2" style="width:100%">
+                    </div>
+                    <div style="flex:1">
+                        <span class="edit-label">그룹 3</span>
+                        <input type="text" id="editG3" style="width:100%">
+                    </div>
+                </div>
+
+                <div style="text-align:right; margin-top:15px;">
+                    <button onclick="saveEditChanges()" style="background:#2ecc71;">💾 수정 내용 저장</button>
+                    <button onclick="document.getElementById('editFormArea').style.display='none'" style="background:#555;">닫기</button>
+                </div>
+            </div>
+        </div>
         <div class="panel" style="border: 2px solid #3498db;">
-            <h3>📝 1. 등록 대기 리스트 작성</h3>
+            <h3>📝 등록 대기 리스트 작성 (신규 등록)</h3>
             <div class="step-box">
-                <div style="margin-bottom:10px;"><span class="highlight">STEP 1. 그룹 생성</span></div>
+                <div style="margin-bottom:10px;"><span class="highlight">STEP 1. 그룹 생성 (로컬)</span></div>
                 <input type="text" id="localGroupName" placeholder="새 그룹명" style="width: 200px;">
                 <button onclick="addGroupLocal()" style="background:#2ecc71;">➕ 그룹 추가</button>
                 <div id="groupBadgeArea" style="margin-top:10px;"></div>
@@ -113,31 +158,29 @@
             
             <div id="static-log-window">
                 [시스템 대기중] 로그창이 정상적으로 배치되었습니다.<br>
-                아래 <b>[모두 갱신]</b> 버튼을 누르면 작업 내용이 여기에 뜹니다.
             </div>
         </div>
 
         <div class="panel" style="border: 1px solid #444;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <h3>📊 DB 등록 현황 (<span id="totalCnt">0</span>명)</h3>
-                <button onclick="updateFull()" style="background-color: #d9534f; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">
-                    🔄 [모두 갱신]
+                <button onclick="updateFull()" style="background-color: #d9534f;">
+                    🔄 [모두 갱신] (URL 재생성)
                 </button>
             </div>
             <div style="overflow-x: auto;">
                 <table style="width: 100%; border-collapse: collapse; font-size: 14px; text-align: center;">
                     <thead>
                         <tr style="background-color: #333; color: #ccc;">
-                            <th style="padding: 10px; border-bottom: 2px solid #555;">그룹명</th>
-                            <th style="padding: 10px; border-bottom: 2px solid #555;">플랫폼</th>
-                            <th style="padding: 10px; border-bottom: 2px solid #555;">ID</th>
-                            <th style="padding: 10px; border-bottom: 2px solid #555;">닉네임</th>
-                            <th style="padding: 10px; border-bottom: 2px solid #555;">총 방송 시간</th>
-                            <th style="padding: 10px; border-bottom: 2px solid #555;">상태 / 관리</th>
+                            <th>그룹 (통합)</th>
+                            <th>플랫폼</th>
+                            <th>ID</th>
+                            <th>닉네임</th>
+                            <th>상태 / 관리</th>
                         </tr>
                     </thead>
                     <tbody id="dbBody">
-                        <tr><td colspan="6" style="padding: 20px; color: #999;">데이터 로딩 중...</td></tr>
+                        <tr><td colspan="5" style="padding: 20px; color: #999;">데이터 로딩 중...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -165,7 +208,69 @@
 
     async function init() { await loadDBList(); }
 
-    // 2. 그룹 관리
+    // ===============================================
+    // [신규 기능] 닉네임 검색 및 수정 로직
+    // ===============================================
+    async function searchUser() {
+        const nickname = document.getElementById('searchNick').value.trim();
+        if(!nickname) return alert('닉네임을 입력하세요.');
+
+        try {
+            const res = await fetch('/api/search_nick', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ nickname })
+            });
+            const data = await res.json();
+
+            if(res.ok) {
+                document.getElementById('editTargetId').value = data.id;
+                document.getElementById('editViewNick').value = data.nickname;
+                document.getElementById('editPlatform').value = data.platform || 'soop';
+                
+                document.getElementById('editGroupName').value = data.group_name || '';
+                document.getElementById('editG1').value = data.group_1 || '';
+                document.getElementById('editG2').value = data.group_2 || '';
+                document.getElementById('editG3').value = data.group_3 || '';
+
+                document.getElementById('editFormArea').style.display = 'block';
+            } else {
+                alert(data.error);
+                document.getElementById('editFormArea').style.display = 'none';
+            }
+        } catch(e) { alert('오류: ' + e.message); }
+    }
+
+    async function saveEditChanges() {
+        if(!confirm('해당 회원의 정보를 수정하시겠습니까?')) return;
+
+        const bodyData = {
+            id: document.getElementById('editTargetId').value,
+            platform: document.getElementById('editPlatform').value,
+            group_name: document.getElementById('editGroupName').value.trim(),
+            group_1: document.getElementById('editG1').value.trim(),
+            group_2: document.getElementById('editG2').value.trim(),
+            group_3: document.getElementById('editG3').value.trim()
+        };
+
+        try {
+            const res = await fetch('/api/update_member', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(bodyData)
+            });
+            const result = await res.json();
+
+            if(res.ok) {
+                alert(result.message);
+                loadDBList(); // 리스트 갱신
+            } else {
+                alert('저장 실패: ' + result.error);
+            }
+        } catch(e) { alert('저장 오류: ' + e.message); }
+    }
+    // ===============================================
+
+
+    // 2. 그룹 관리 (기존)
     function addGroupLocal() {
         const name = document.getElementById('localGroupName').value.trim();
         if(!name) return alert('그룹명을 입력하세요.');
@@ -189,7 +294,7 @@
         });
     }
 
-    // 3. 리스트에 담기
+    // 3. 리스트에 담기 (기존)
     async function lookupAndAdd() {
         const group_name = document.getElementById('selGroup').value;
         const platform = document.getElementById('selPlatform').value;
@@ -204,8 +309,7 @@
 
         try {
             const res = await fetch('/api/lookup', {
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'},
+                method: 'POST', headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ id: id, platform: platform }) 
             });
 
@@ -258,7 +362,7 @@
             });
             const result = await res.json();
             if(res.ok) {
-                alert(`✅ ${result.count}명 저장 완료!`);
+                alert(`✅ ${result.count || '완료'} 저장 완료!`);
                 draftList = []; renderDraft(); loadDBList(); 
             } else { throw new Error(result.error || '저장 실패'); }
         } catch(e) { alert('오류: ' + e.message); }
@@ -273,11 +377,10 @@
                 method: 'POST', headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ id: id })
             });
-            if(res.ok) {
-                loadDBList(); 
-            } else {
-                const err = await res.json();
-                alert('삭제 실패: ' + err.error);
+            if(res.ok) { loadDBList(); } 
+            else { 
+                const err = await res.json(); 
+                alert('삭제 실패: ' + err.error); 
             }
         } catch(e) { alert('삭제 오류: ' + e.message); }
     }
@@ -297,9 +400,7 @@
                     <td><span class="badge ${m.platform}">${m.platform}</span></td>
                     <td>${m.id}</td>
                     <td>${m.nickname}</td>
-                    <td style="font-size:0.8rem; color:#aaa;">${m.total_broadcast_time || '-'}</td>
                     <td>
-                        ${m.is_active ? '✅' : '🚫'}
                         <button class="btn-delete" onclick="deleteStreamer('${m.id}')">삭제</button>
                     </td>
                 </tr>
@@ -307,14 +408,10 @@
         } catch(e) { console.error(e); }
     }
 
-
-
-
-        // 7. [핵심] 모두 갱신 & 로그 출력 (수정됨)
+    // 7. 모두 갱신 (수정됨: DB 명단 가져와서 처리)
     async function updateFull() {
         if(!confirm('DB에 있는 모든 스트리머 정보를 갱신하시겠습니까?')) return;
 
-        // 로그창 찾기
         const logWindow = document.getElementById('static-log-window');
         const btn = document.querySelector('button[onclick="updateFull()"]');
 
@@ -325,7 +422,6 @@
         if(btn) btn.innerText = '⏳ 목록 확보 중...';
 
         try {
-            // [단계 1] DB에 있는 리스트 먼저 가져오기 (이게 없어서 빈값이었음)
             const listRes = await fetch('/api/get_list');
             const currentList = await listRes.json();
 
@@ -336,21 +432,17 @@
 
             if(logWindow) logWindow.innerHTML += `🔄 [2/3] 총 ${currentList.length}명 데이터 서버로 전송...<br>`;
 
-            // [단계 2] 가져온 리스트를 다시 register_batch로 보내서 URL 재성성 요청
             const res = await fetch('/api/register_batch', { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: currentList }) // <--- 이제 진짜 데이터를 보냅니다
+                body: JSON.stringify({ items: currentList })
             });
             const json = await res.json();
 
-            // [단계 3] 로그 뿌리기
             if(logWindow && json.logs && Array.isArray(json.logs)) {
-                logWindow.innerHTML = ""; // 기존 내용 지우고 새로 씀
-                
+                logWindow.innerHTML = ""; 
                 json.logs.forEach(msg => {
                     let style = "color: #ccc;";
-                    // 로그 색상 꾸미기
                     if(msg.includes('에러') || msg.includes('실패')) style = "color: #ff5555; font-weight:bold;";
                     else if(msg.includes('성공')) style = "color: #55ff55; font-weight:bold;";
                     else if(msg.includes('주소')) style = "color: #ffff00;"; 
@@ -363,18 +455,14 @@
             } else {
                 if(logWindow) logWindow.innerHTML += `<br>⚠️ 서버 로그 없음: ${JSON.stringify(json)}`;
             }
-
         } catch (e) {
             if(logWindow) logWindow.innerHTML += `<br>❌ [치명적 에러] ${e.message}`;
             console.error(e);
         } finally {
             if(btn) btn.innerText = '🔄 [모두 갱신]';
-            loadDBList(); // 테이블 갱신
+            loadDBList(); 
         }
     }
-
-
-        
-</script>    
+</script>   
 </body>
 </html>
