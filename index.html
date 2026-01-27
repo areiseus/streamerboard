@@ -6,93 +6,117 @@
     <title>Streamer Live Board</title>
     <style>
         /* [기본 설정] */
-        body { margin: 0; background: #f0f2f5; font-family: 'Pretendard', sans-serif; padding: 20px; color: #333; }
-        .container { max-width: 1200px; margin: 0 auto; position: relative; }
+        body { margin: 0; background: #e9ecef; font-family: 'Pretendard', sans-serif; padding: 20px; color: #333; }
+        .container { max-width: 1400px; margin: 0 auto; position: relative; padding-bottom: 100px; }
         
-        h1 { text-align: center; margin-bottom: 40px; color: #222; }
+        h1 { text-align: center; margin-bottom: 40px; color: #343a40; font-weight: 900; letter-spacing: -1px; }
 
-        /* [풍선 레이아웃 컨테이너] */
-        #board {
+        /* [상단: 그룹 풍선 영역] */
+        #balloon-area {
             display: flex;
             flex-wrap: wrap;
-            gap: 30px; /* 풍선 사이 간격 */
-            justify-content: center; /* 가운데 정렬 */
+            gap: 30px;
+            justify-content: center;
             align-items: flex-start;
+            margin-bottom: 60px; /* 미분류 영역과 간격 */
         }
 
-        /* [핵심: 풍선 스타일 (Balloon)] */
+        /* 풍선 (Balloon) 스타일 */
         .balloon {
             background: #fff;
-            border: 3px solid #000; /* 그림처럼 굵은 테두리 */
-            border-radius: 30px;    /* 둥글둥글하게 */
-            padding: 25px;
-            min-width: 200px;
-            max-width: 400px;
-            box-shadow: 5px 5px 0px rgba(0,0,0,0.1); /* 약간의 입체감 */
-            position: relative;
+            border: 3px solid #333;
+            border-radius: 30px;
+            padding: 20px;
+            min-width: 250px;
+            max-width: 100%; /* 유동적 너비 */
+            box-shadow: 8px 8px 0px rgba(0,0,0,0.15);
             transition: transform 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         .balloon:hover { transform: translateY(-5px); }
 
-        /* 풍선 제목 (그룹 이름) */
         .balloon-title {
-            font-size: 1.2rem;
-            font-weight: 900;
-            text-align: center;
+            font-size: 1.4rem;
+            font-weight: 800;
             margin-bottom: 20px;
-            color: #000;
-            border-bottom: 2px dashed #ddd;
-            padding-bottom: 10px;
+            background: #333;
+            color: #fff;
+            padding: 5px 20px;
+            border-radius: 20px;
         }
 
-        /* 멤버들이 들어갈 그리드 */
+        /* 풍선 내부 그리드 */
         .member-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+            display: flex;
+            flex-wrap: wrap;
             gap: 15px;
-            justify-items: center;
+            justify-content: center;
         }
-        
-        /* [카드(멤버) 스타일] */
+
+        /* [카드 스타일] */
         .card { 
-            width: 90px;
+            width: 100px;
             text-align: center; cursor: pointer; 
-            transition: 0.2s; position: relative; 
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 10px 5px;
+            transition: 0.2s;
+            position: relative;
+            border: 1px solid #ddd;
         }
-        .card:hover .profile-img { transform: scale(1.1); border-color: #333; }
-        
-        /* 라이브 상태 효과 */
-        .card.is-live .profile-img { 
-            border-color: #ff4757; 
-            box-shadow: 0 0 15px rgba(255, 71, 87, 0.4);
-            animation: pulse 2s infinite;
-        }
+        .card:hover { background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         
         .profile-img { 
-            width: 70px; height: 70px; border-radius: 50%; 
+            width: 65px; height: 65px; border-radius: 50%; 
             background: #eee; object-fit: cover; margin-bottom: 8px; 
-            border: 3px solid #ddd; transition: 0.2s;
+            border: 3px solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
+        
+        /* 라이브 효과 */
+        .card.is-live { border-color: #ff4757; background: #fff5f5; }
+        .card.is-live .profile-img { border-color: #ff4757; animation: pulse 2s infinite; }
 
         .name { 
-            font-size: 0.9rem; font-weight: bold; color: #333;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+            font-size: 0.95rem; font-weight: bold; color: #333; margin-bottom: 5px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        
-        .badge { 
-            display: inline-block; font-size: 0.7rem; padding: 2px 6px; 
-            border-radius: 4px; color: #fff; font-weight: bold; margin-bottom: 4px; 
-        }
-        .soop { background: #42C769; } .chzzk { background: #00E59D; color:#111; }
-        
-        .status-text { font-size: 0.8rem; color: #888; margin-top: 2px;}
 
-        /* 관리자 링크 */
-        .admin-link { 
-            position: absolute; top: 0; right: 0; 
-            font-size: 1.5rem; text-decoration: none; cursor: pointer; opacity: 0.3; transition: 0.3s;
+        /* [태그 영역] 프로필 사진 아래 그룹들 나열 */
+        .tags {
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; margin-bottom: 5px;
         }
-        .admin-link:hover { opacity: 1; transform: rotate(90deg); }
+        .tag-badge {
+            font-size: 0.65rem; padding: 2px 5px; border-radius: 4px;
+            background: #495057; color: #fff; font-weight: bold;
+        }
+        /* 플랫폼 배지 */
+        .pf-badge { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; color: #fff; font-weight: bold; display:inline-block; margin-bottom: 3px;}
+        .soop { background: #42C769; } .chzzk { background: #00E59D; color: #111; }
+
+        .status-text { font-size: 0.75rem; color: #888; }
+
+        /* [하단: 미분류(No Group) 영역] */
+        #unclassified-area {
+            border-top: 3px dashed #bbb;
+            padding-top: 30px;
+            margin-top: 50px;
+        }
+        .footer-title {
+            font-size: 1.2rem; font-weight: bold; color: #666; margin-bottom: 20px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        
+        /* 미분류용 그리드 (단순 나열) */
+        .simple-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 15px;
+        }
+
+        .admin-link { position: absolute; top: 0; right: 0; font-size: 1.5rem; text-decoration: none; opacity: 0.3; }
+        .admin-link:hover { opacity: 1; }
 
         @keyframes pulse {
             0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
@@ -106,8 +130,17 @@
 <div class="container">
     <h1>🎈 Streamer Groups</h1>
     <a href="admin.html" class="admin-link" title="관리자 페이지">⚙️</a>
-    <div id="board">
-        <p style="text-align:center; width:100%; margin-top:50px;">로딩 중...</p>
+
+    <div id="balloon-area">
+        <p style="width:100%; text-align:center;">데이터 불러오는 중...</p>
+    </div>
+
+    <div id="unclassified-area" style="display:none;">
+        <div class="footer-title">
+            <span>📂 미분류 스트리머 (No Group)</span>
+            <span id="no-group-count" style="font-size:0.9rem; background:#ddd; padding:2px 8px; border-radius:10px;">0</span>
+        </div>
+        <div id="no-group-grid" class="simple-grid"></div>
     </div>
 </div>
 
@@ -118,96 +151,143 @@
             const data = await res.json();
 
             if (!data || data.length === 0) {
-                document.getElementById('board').innerHTML = '<p style="text-align:center; width:100%">등록된 스트리머가 없습니다.</p>';
+                document.getElementById('balloon-area').innerHTML = '<p>등록된 스트리머가 없습니다.</p>';
                 return;
             }
 
-            // ---------------------------------------------------------
-            // [핵심 로직 변경] 그룹별 분리가 아니라 "조합(Combination)"별 분리
-            // 예: A그룹에도 있고 B그룹에도 있으면 -> "A + B" 라는 새로운 키로 묶음
-            // ---------------------------------------------------------
-            const comboGroups = {};
+            // 1. 데이터 분류 (그룹 유무)
+            const grouped = {}; // 메인 그룹별로 묶을 객체
+            const noGroupList = []; // 그룹 없는 사람
 
             data.forEach(m => {
-                // 1. 이 사람이 속한 모든 그룹 수집 (Set으로 중복제거)
-                const myGroups = new Set();
-                
-                // (구버전 group_name 처리)
+                const myGroups = []; // 이 사람의 모든 그룹 태그 수집
+
+                // (1) 통합 group_name 처리
                 if (m.group_name) {
                     m.group_name.split(',').forEach(g => {
-                        if(g.trim()) myGroups.add(g.trim());
+                        if(g.trim()) myGroups.push(g.trim());
                     });
                 }
-                // (신규 group_1,2,3 처리)
-                if (m.group_1 && m.group_1.trim()) myGroups.add(m.group_1.trim());
-                if (m.group_2 && m.group_2.trim()) myGroups.add(m.group_2.trim());
-                if (m.group_3 && m.group_3.trim()) myGroups.add(m.group_3.trim());
+                // (2) group_1, 2, 3 처리
+                if (m.group_1 && m.group_1.trim()) myGroups.push(m.group_1.trim());
+                if (m.group_2 && m.group_2.trim()) myGroups.push(m.group_2.trim());
+                if (m.group_3 && m.group_3.trim()) myGroups.push(m.group_3.trim());
 
-                if (myGroups.size === 0) myGroups.add('미분류');
+                // 중복 제거
+                const uniqueGroups = [...new Set(myGroups)];
 
-                // 2. 그룹 리스트를 정렬해서 '고유 키' 생성
-                // 예: ["이매방랑", "유앤아이"] -> "유앤아이 & 이매방랑"
-                const groupKey = Array.from(myGroups).sort().join(' & ');
+                // --- 분류 로직 ---
+                if (uniqueGroups.length === 0) {
+                    // 그룹 없음 -> 하단행
+                    noGroupList.push(m);
+                } else {
+                    // 그룹 있음 -> "첫 번째 그룹(Main)"을 기준으로 풍선에 넣음
+                    // (그려주신 그림처럼 뭉치기 위함)
+                    const mainGroup = uniqueGroups[0]; // 가장 앞에 있는게 메인 그룹
 
-                if (!comboGroups[groupKey]) comboGroups[groupKey] = [];
-                comboGroups[groupKey].push(m);
+                    if (!grouped[mainGroup]) grouped[mainGroup] = [];
+                    
+                    // 멤버 객체에 'tags' 속성 추가해서 저장 (화면 표시용)
+                    m._tags = uniqueGroups; 
+                    grouped[mainGroup].push(m);
+                }
             });
 
-            render(comboGroups);
-            checkLive(data);
+            renderBalloons(grouped);
+            renderNoGroup(noGroupList);
+            checkLive(data); // 라이브 체크는 전체 대상으로
 
         } catch (e) {
             console.error(e);
-            document.getElementById('board').innerHTML = '<p>로딩 실패</p>';
+            document.getElementById('balloon-area').innerHTML = '<p>로딩 실패</p>';
         }
     }
 
-    function render(groupedData) {
-        const board = document.getElementById('board');
-        board.innerHTML = '';
+    // [상단] 풍선 렌더링
+    function renderBalloons(groupedData) {
+        const area = document.getElementById('balloon-area');
+        area.innerHTML = '';
 
-        // 조합된 그룹 키들을 순회하며 풍선 생성
+        // 그룹 이름 순 정렬
         Object.keys(groupedData).sort().forEach(gName => {
             const members = groupedData[gName];
 
-            // 풍선(Balloon) 생성
+            // 풍선 생성
             const balloon = document.createElement('div');
             balloon.className = 'balloon';
-
-            // 타이틀 처리 ("&"가 있으면 "겸직" 느낌으로 표시)
-            const displayTitle = gName.replace(/ & /g, ' <span style="font-size:0.8em; color:#888;">+</span> ');
-            
             balloon.innerHTML = `
-                <div class="balloon-title">${displayTitle}</div>
+                <div class="balloon-title">${gName} <span style="font-size:0.8rem; opacity:0.7">(${members.length})</span></div>
                 <div class="member-grid"></div>
             `;
             
             const grid = balloon.querySelector('.member-grid');
 
             members.forEach(m => {
-                const pf = m.platform || 'soop';
-                const isSoop = pf === 'soop' || pf === 'afreeca';
-                const link = isSoop ? `https://play.afreecatv.com/${m.id}` : `https://chzzk.naver.com/live/${m.id}`;
-
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.setAttribute('data-id', m.id);
-                card.onclick = () => window.open(link);
-
-                card.innerHTML = `
-                    <img src="${m.profile_img || 'https://via.placeholder.com/70'}" class="profile-img">
-                    <div style="line-height:1">
-                        <span class="badge ${isSoop?'soop':'chzzk'}">${isSoop?'SOOP':'CHZZK'}</span>
-                    </div>
-                    <div class="name">${m.nickname || m.id}</div>
-                    <div class="status-text">OFF</div>
-                `;
-                grid.appendChild(card);
+                grid.appendChild(createCard(m));
             });
-            board.appendChild(balloon);
+
+            area.appendChild(balloon);
         });
     }
 
+    // [하단] 미분류 렌더링
+    function renderNoGroup(list) {
+        const area = document.getElementById('unclassified-area');
+        const grid = document.getElementById('no-group-grid');
+        const countSpan = document.getElementById('no-group-count');
+
+        if (list.length === 0) {
+            area.style.display = 'none';
+            return;
+        }
+
+        area.style.display = 'block';
+        countSpan.innerText = list.length;
+        grid.innerHTML = '';
+
+        list.forEach(m => {
+            // 미분류는 태그가 없으므로 빈 배열 전달
+            m._tags = [];
+            grid.appendChild(createCard(m));
+        });
+    }
+
+    // [공통] 카드 생성 함수
+    function createCard(m) {
+        const pf = m.platform || 'soop';
+        const isSoop = pf === 'soop' || pf === 'afreeca';
+        const link = isSoop ? `https://play.afreecatv.com/${m.id}` : `https://chzzk.naver.com/live/${m.id}`;
+
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.setAttribute('data-id', m.id);
+        card.onclick = () => window.open(link);
+
+        // 태그 HTML 생성 (프로필 아래에 붙음)
+        let tagsHtml = '';
+        if (m._tags && m._tags.length > 0) {
+            tagsHtml = '<div class="tags">';
+            m._tags.forEach(t => {
+                tagsHtml += `<span class="tag-badge">${t}</span>`;
+            });
+            tagsHtml += '</div>';
+        }
+
+        card.innerHTML = `
+            <div style="position:relative; display:inline-block;">
+                <img src="${m.profile_img || 'https://via.placeholder.com/65'}" class="profile-img">
+                <div style="margin-top:-10px; margin-bottom:5px;">
+                    <span class="pf-badge ${isSoop?'soop':'chzzk'}">${isSoop?'S':'C'}</span>
+                </div>
+            </div>
+            <div class="name">${m.nickname || m.id}</div>
+            
+            ${tagsHtml} <div class="status-text">OFF</div>
+        `;
+        return card;
+    }
+
+    // 라이브 체크
     async function checkLive(allMembers) {
         const uniqueIds = [...new Set(allMembers.map(m => m.id))];
         const targets = uniqueIds.map(id => {
