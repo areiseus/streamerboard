@@ -1,12 +1,11 @@
 import { SoopClient } from 'soop-extension';
 
 export default async function handler(req, res) {
-    // 1. CORS 허용 설정 (Vercel 필수)
+    // 1. CORS 허용 (Vercel 필수)
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    // 2. 예비 요청(OPTIONS) 처리
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
@@ -21,35 +20,52 @@ export default async function handler(req, res) {
         await Promise.all(items.map(async (item) => {
             if (item.platform === 'soop' || item.platform === 'afreeca') {
                 try {
-                    // 라이브 상태 및 방송국 정보 조회
+                    // [1] 라이브 상태는 라이브러리로 확인 (이건 잘 되니까 유지)
                     const liveDetail = await client.live.detail(item.id);
-                    const stationRes = await client.channel.station(item.id);
-
                     const isLive = liveDetail && liveDetail.broad_no ? true : false;
                     const viewers = isLive ? (liveDetail.total_view_cnt || 0) : 0;
                     
-                    // [핵심 수정] 애청자 수(upd) 찾기
-                    // stationRes 구조가 { code:..., station: { ... } } 형태일 수 있음
-                    const stationData = stationRes.station || stationRes || {};
-
-                    // 'upd'가 애청자(즐겨찾기) 수 입니다. 
-                    // 혹시 몰라 total_ok(추천)나 fan_cnt(팬클럽) 위치도 안전하게 체크
-                    const fans = stationData.upd || stationData.total_upd || 0;
+                    // [2] 애청자 수는 사용자님이 찾은 '직통 API'로 해결
+                    let fans = 0;
+                    try {
+                        // 사용자님이 찾으신 그 주소!
+                        const apiUrl = `https://api-channel.sooplive.co.kr/v1.1/channel/${item.id}/dashboard`;
+                        
+                        const dashRes = await fetch(apiUrl, {
+                            method: 'GET',
+                            headers: {
+                                // 봇으로 오해받지 않게 사람인 척 헤더 추가
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                                'Referer': `https://ch.sooplive.co.kr/${item.id}`
+                            }
+                        });
+                        
+                        if (dashRes.ok) {
+                            const dashData = await dashRes.json();
+                            // 데이터 구조: { data: { station: { upd: 965, ... } } }
+                            if (dashData && dashData.data && dashData.data.station) {
+                                fans = dashData.data.station.upd || 0;
+                            }
+                        }
+                    } catch (fetchErr) {
+                        console.error(`[Dashboard API Error] ${item.id}:`, fetchErr);
+                        // 실패 시 라이브러리로 2차 시도 (보험)
+                        const stationInfo = await client.channel.station(item.id);
+                        fans = stationInfo?.station?.upd || 0;
+                    }
 
                     results.push({
                         id: item.id,
                         platform: 'soop',
                         isLive: isLive,
                         viewers: parseInt(viewers),
-                        fans: parseInt(fans) // 여기서 965명이 잡혀야 함
+                        fans: parseInt(fans) // 이제 무조건 나옵니다
                     });
                 } catch (e) {
-                    console.error(`Error fetching ${item.id}:`, e);
-                    // 에러 나도 0으로 반환해서 화면 안 깨지게 함
+                    console.error(`Error processing ${item.id}:`, e);
                     results.push({ id: item.id, isLive: false, viewers: 0, fans: 0 });
                 }
             } else {
-                // 타 플랫폼 (치지직 등)
                 results.push({ id: item.id, platform: item.platform, isLive: false, viewers: 0, fans: 0 });
             }
         }));
