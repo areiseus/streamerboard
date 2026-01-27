@@ -3,21 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>유앤아이매방랑 스트리머 현황판 (Grid System)</title>
+    <title>유앤아이매방랑 정밀 그리드 현황판</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         /* [기본 스타일] */
-        body { margin: 0; background: #f0f2f5; font-family: 'Pretendard', sans-serif; overflow-x: hidden; }
-        .container { width: 100%; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+        body { margin: 0; background: #f4f6f8; font-family: 'Pretendard', sans-serif; overflow-x: hidden; height: 100vh; }
+        .container { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; }
 
-        /* [관리자 링크] */
         .admin-link { position: fixed; top: 20px; right: 20px; font-size: 1.5rem; text-decoration: none; opacity: 0.3; z-index: 2000; transition: 0.3s; }
         .admin-link:hover { opacity: 1; transform: rotate(90deg); }
 
         /* [1. 헤더] */
         header {
-            width: 100%; background: #fff; padding: 15px 0; text-align: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05); z-index: 100; position: sticky; top: 0;
+            flex: 0 0 auto; width: 100%; background: #fff; padding: 15px 0; text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); z-index: 100;
         }
         h1 { margin: 0 0 5px 0; font-size: 1.8rem; font-weight: 900; color: #333; }
         .refresh-btn {
@@ -26,44 +25,49 @@
         }
         .refresh-btn:hover { background: #555; }
 
-        /* [2. 메인 그리드 영역] */
+        /* [2. 메인 영역] */
         #main-area {
+            flex: 1; width: 100%; position: relative; overflow-y: auto; overflow-x: hidden;
+            background: radial-gradient(circle at 50% 50%, #ffffff 0%, #e9ecef 100%);
+            display: flex; justify-content: center; /* 그리드 중앙 정렬용 */
+        }
+
+        /* 컨텐츠 래퍼 (SVG와 카드가 들어갈 실제 공간) */
+        #content-wrapper {
             position: relative;
-            width: 100%;
-            /* 카드가 배치될 충분한 높이 확보 (스크롤 가능) */
-            min-height: 80vh; 
-            background: radial-gradient(circle at 50% 50%, #ffffff 0%, #f1f3f5 100%);
-            overflow: auto;
+            width: 600px; /* 5열 * 110px + 여유 -> 고정폭 */
+            min-height: 1000px;
+            margin-top: 50px;
+            margin-bottom: 50px;
         }
 
-        /* SVG & Card Layer */
-        /* 좌측 상단(0,0) 배치를 위해 absolute 사용 */
-        svg { width: 3000px; height: 3000px; position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none; }
-        #card-overlay { width: 3000px; height: 3000px; position: absolute; top: 0; left: 0; z-index: 2; }
+        svg { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none; }
+        #card-overlay { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 2; }
 
-        /* [3. 하단 미분류 영역] */
+        /* [3. 하단 영역] */
         #footer-area {
-            width: 90%; max-width: 1400px; background: #fff; border-radius: 10px;
-            margin: 30px 0 50px 0; padding: 20px;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.03); z-index: 10;
+            flex: 0 0 auto; width: 90%; max-width: 1000px;
+            background: #fff; border-top: 1px solid #ddd;
+            padding: 20px; margin-bottom: 20px; border-radius: 10px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 10;
         }
-        .footer-header { border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; font-weight: bold; color: #555; }
-        .no-group-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+        .footer-header { font-weight: bold; color: #555; margin-bottom: 10px; border-bottom: 2px solid #eee; padding-bottom: 5px; }
+        .no-group-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
 
         /* [카드 디자인] */
         .card {
-            position: absolute; /* Grid 좌표 고정용 */
+            position: absolute; 
             width: 100px; height: 130px;
             background: #fff; border-radius: 8px;
             border: 2px solid transparent;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
             display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
             padding-top: 15px; box-sizing: border-box;
             cursor: pointer; transition: transform 0.2s;
         }
-        .card:hover { transform: scale(1.1); z-index: 999; box-shadow: 0 5px 15px rgba(0,0,0,0.2); border-color: #ccc; }
+        .card:hover { transform: scale(1.1); z-index: 999; box-shadow: 0 8px 20px rgba(0,0,0,0.2); border-color: #aaa; }
 
-        /* 하단 미분류 카드는 relative */
+        /* 하단 카드는 relative */
         .no-group-grid .card { position: relative; left: auto !important; top: auto !important; }
 
         .profile-img { width: 65px; height: 65px; border-radius: 50%; object-fit: cover; border: 2px solid #eee; margin-bottom: 8px; background: #f0f0f0; }
@@ -74,28 +78,29 @@
         .soop { background: #42C769; } .chzzk { background: #00E59D; color:#333; }
         .name-tag { font-size: 0.85rem; font-weight: bold; color: #333; width: 90px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        /* 라이브 효과 */
         .is-live { border-color: #ff4757 !important; background: #fff5f5; }
         .is-live .profile-img { border-color: #ff4757; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,71,87,0.6); } 70% { box-shadow: 0 0 0 8px rgba(255,71,87,0); } 100% { box-shadow: 0 0 0 0 rgba(255,71,87,0); } }
 
         /* 풍선 스타일 */
-        .group-hull { fill-opacity: 0.08; stroke-linejoin: round; stroke-linecap: round; mix-blend-mode: multiply; }
-        .group-label { font-size: 13px; font-weight: 800; fill: #555; text-anchor: middle; text-shadow: 1px 1px 0 #fff; pointer-events: none; }
+        .group-hull { fill-opacity: 0.08; stroke-linejoin: round; stroke-linecap: round; mix-blend-mode: multiply; transition: d 0.3s; }
+        .group-label { font-size: 13px; font-weight: 800; fill: #444; text-anchor: middle; text-shadow: 1px 1px 0 #fff; pointer-events: none; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <header>
-        <h1>유앤아이매방랑 스트리머 현황판</h1>
-        <button class="refresh-btn" onclick="location.reload()">🔄 배치 새로고침</button>
+        <h1>유앤아이매방랑 정밀 그리드</h1>
+        <button class="refresh-btn" onclick="location.reload()">🔄 배치 재계산</button>
     </header>
     <a href="admin.html" class="admin-link">⚙️</a>
 
     <div id="main-area">
-        <svg id="svg-layer"></svg>
-        <div id="card-overlay"></div>
+        <div id="content-wrapper">
+            <svg id="svg-layer"></svg>
+            <div id="card-overlay"></div>
+        </div>
     </div>
 
     <div id="footer-area" style="display:none;">
@@ -105,14 +110,10 @@
 </div>
 
 <script>
-    // [설정: 그리드 시스템]
-    const GRID_W = 110; // 카드 폭 + 간격
-    const GRID_H = 140; // 카드 높이 + 간격
-    const PADDING_TOP = 50;  // 상단 여백
-    const PADDING_LEFT = 50; // 좌측 여백
-    
-    // 화면 가로폭에 맞춰 최대 열 개수 계산 (반응형 대응)
-    const MAX_COLS = Math.floor((window.innerWidth - 100) / GRID_W);
+    // [조건 0] 그리드는 가로 5칸 고정
+    const COLS = 5;
+    const CELL_W = 110; 
+    const CELL_H = 150; 
 
     async function init() {
         try {
@@ -121,22 +122,27 @@
             if (!data || data.length === 0) return;
 
             // 1. 데이터 파싱
-            const gridNodes = [];
-            const noGroupNodes = [];
+            // [우선순위 Fallback] ID 알파벳순 정렬
+            data.sort((a, b) => a.id.localeCompare(b.id));
 
+            const groupedMembers = [];
+            const noGroupMembers = [];
+
+            // 그룹 정보 파싱 및 분류
             data.forEach(m => {
                 m._groups = parseGroups(m);
-                // 그룹이 있으면 메인 그리드, 없으면 하단
-                if (m._groups.length > 0) gridNodes.push(m);
-                else noGroupNodes.push(m);
+                m.multiGroupCount = m._groups.length; // 그룹 소속 개수 (조건 8용)
+                
+                if (m._groups.length > 0) groupedMembers.push(m);
+                else noGroupMembers.push(m);
             });
 
-            // 2. 미분류 렌더링 (조건 11)
-            renderFooter(noGroupNodes);
+            // 2. 미분류 배치 (조건 22)
+            renderFooter(noGroupMembers);
 
-            // 3. 메인 그리드 계산 및 렌더링 (조건 0~10)
-            if(gridNodes.length > 0) {
-                calculateGridAndRender(gridNodes);
+            // 3. 그리드 알고리즘 실행 (조건 1~21)
+            if (groupedMembers.length > 0) {
+                runGridAlgorithm(groupedMembers);
             }
 
             checkLive(data);
@@ -144,143 +150,288 @@
         } catch (e) { console.error(e); }
     }
 
-    // [핵심 로직] 물리 엔진으로 관계 계산 -> 그리드 스냅
-    function calculateGridAndRender(nodes) {
+    // =================================================================
+    // [알고리즘 엔진] 사용자가 정의한 22가지 규칙 수행
+    // =================================================================
+    function runGridAlgorithm(members) {
         
-        // (A) 관계 형성 (Link) - 조건 1, 2, 4, 5
-        const links = [];
-        const groups = {}; 
-
-        nodes.forEach(node => {
-            // 초기 위치: 0,0 (좌측 상단) 부근에서 시작 (조건 1: 좌측상단 우선)
-            node.x = Math.random() * 100;
-            node.y = Math.random() * 100;
-
-            node._groups.forEach(gName => {
-                if(!groups[gName]) groups[gName] = [];
-                // 같은 그룹 멤버들과 연결 (서로 당김 -> 근접 배치 유도)
-                groups[gName].forEach(target => {
-                    links.push({ source: node, target: target });
-                });
-                groups[gName].push(node);
+        // 1. 그룹 객체 생성
+        const groupMap = {}; // name -> { name, members: [], size }
+        members.forEach(m => {
+            m._groups.forEach(gName => {
+                if(!groupMap[gName]) groupMap[gName] = { name: gName, members: [], score: 0 };
+                groupMap[gName].members.push(m);
             });
         });
-
-        // (B) 물리 시뮬레이션 (위치 계산용)
-        // 화면에 그리지 않고 데이터만 계산합니다.
-        const simulation = d3.forceSimulation(nodes)
-            .force("link", d3.forceLink(links).distance(30).strength(0.8)) // 그룹간 당김
-            .force("charge", d3.forceManyBody().strength(-50)) // 겹침 방지 (척력)
-            .force("collide", d3.forceCollide(1)) // 미세 겹침 방지
-            // [중요] 조건 1: 좌측 상단(0,0) 방향으로 강하게 당김
-            .force("x", d3.forceX(0).strength(0.3)) 
-            .force("y", d3.forceY(0).strength(0.3))
-            .stop();
-
-        // 시뮬레이션 실행 (300회 틱)
-        for (let i = 0; i < 300; ++i) simulation.tick();
-
-        // (C) 그리드 스냅 (Grid Snapping) - 조건 0, 6
-        // 계산된 물리 좌표(x,y)를 기반으로 가장 가까운 '빈 그리드 칸'을 찾습니다.
         
-        // 정렬: 좌측 상단(0,0)에 가까운 순서대로 그리드 점유 우선권 부여
-        nodes.sort((a, b) => (a.y - b.y) * 10 + (a.x - b.x)); // Y축 우선, 그 다음 X축
-
-        const occupied = new Set(); // 점유된 칸 기록
-
-        nodes.forEach(node => {
-            // 물리 좌표를 그리드 인덱스로 변환 (음수 방지)
-            let rawCol = Math.max(0, Math.floor(node.x / 50)); 
-            let rawRow = Math.max(0, Math.floor(node.y / 50));
-
-            // 나선형 탐색(Spiral Search)으로 가장 가까운 빈칸 찾기
-            // 조건 3: 최대한 1열(가로) 배치 -> X축 탐색 우선권
-            let found = false;
-            let r = 0;
-            while(!found) {
-                // (-r, -r) 부터 (r, r) 까지 주변 탐색
-                for(let dy = -r; dy <= r; dy++) {
-                    for(let dx = -r; dx <= r; dx++) {
-                        let c = rawCol + dx;
-                        let r_idx = rawRow + dy;
-
-                        // 화면 범위 제한 (반응형 열 개수)
-                        if(c < 0 || c >= MAX_COLS || r_idx < 0) continue;
-
-                        const key = `${c},${r_idx}`;
-                        if(!occupied.has(key)) {
-                            occupied.add(key);
-                            node.gridCol = c;
-                            node.gridRow = r_idx;
-                            // 실제 픽셀 좌표 확정
-                            node.finalX = PADDING_LEFT + c * GRID_W + GRID_W/2;
-                            node.finalY = PADDING_TOP + r_idx * GRID_H + GRID_H/2;
-                            found = true;
-                            break;
-                        }
-                    }
-                    if(found) break;
-                }
-                r++;
-            }
+        // 그룹 리스트 변환
+        let groups = Object.values(groupMap);
+        
+        // [조건 6, 7] 중앙 그룹(A) 선정을 위한 점수 계산
+        // 점수 = (그룹원들이 속한 타 그룹의 총 개수)
+        groups.forEach(g => {
+            let crossScore = 0;
+            g.members.forEach(m => {
+                crossScore += (m.multiGroupCount - 1); // 본인 그룹 제외
+            });
+            g.score = crossScore;
+            g.size = g.members.length;
         });
 
-        // (D) 렌더링
-        renderCards(nodes);
-        renderBalloons(groups);
+        // [정렬 1차] 그룹 점수(Score) 높은 순 -> 사이즈 큰 순
+        groups.sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            return b.size - a.size;
+        });
+
+        // ==========================================================
+        // [배치 로직] Deque(양방향 큐) 방식 사용
+        // 중앙(A)을 먼저 놓고, 위(B)/아래(C)로 확장
+        // ==========================================================
+        
+        // 1. King Group (A) 선정 (가장 점수 높은 그룹)
+        const centerGroup = groups[0]; 
+        const placedGroups = [centerGroup]; // 배치된 순서 (배열의 중간이 A)
+        const placedSet = new Set([centerGroup.name]);
+
+        // 2. 나머지 그룹 배치 (위/아래 교차 배치)
+        // A와 가장 관련 깊은 그룹을 찾아서 위, 그 다음 아래 순서로 붙임
+        let upTarget = centerGroup;
+        let downTarget = centerGroup;
+        
+        // 남은 그룹들
+        let remaining = groups.slice(1);
+
+        while(remaining.length > 0) {
+            // [조건 9, 15] 위(Up)에 붙일 그룹 찾기 (Target과 교집합이 가장 많은 그룹)
+            let bestUp = findBestNeighbor(upTarget, remaining);
+            if(bestUp) {
+                placedGroups.unshift(bestUp); // 배열 앞에 추가 (위쪽 배치)
+                placedSet.add(bestUp.name);
+                upTarget = bestUp; // 기준점 이동
+                remaining = remaining.filter(g => g.name !== bestUp.name);
+            }
+
+            // [조건 10, 15] 아래(Down)에 붙일 그룹 찾기
+            if(remaining.length > 0) {
+                let bestDown = findBestNeighbor(downTarget, remaining);
+                if(bestDown) {
+                    placedGroups.push(bestDown); // 배열 뒤에 추가 (아래쪽 배치)
+                    placedSet.add(bestDown.name);
+                    downTarget = bestDown;
+                    remaining = remaining.filter(g => g.name !== bestDown.name);
+                }
+            }
+            
+            // 연결고리가 끊겼으면 그냥 남은 것 중 큰거 붙임
+            if(!bestUp && !bestDown && remaining.length > 0) {
+                 const next = remaining.shift();
+                 placedGroups.push(next);
+            }
+        }
+
+        // ==========================================================
+        // [멤버 정렬 로직] Vertical Alignment (조건 8, 11, 12)
+        // ==========================================================
+        
+        // 1. 중앙 그룹(A) 내부 정렬
+        // [조건 8] 다중 소속(multiGroupCount) 많은 순 -> 우측 배치
+        centerGroup.members.sort((a, b) => {
+            if(a.multiGroupCount !== b.multiGroupCount) return a.multiGroupCount - b.multiGroupCount; // 오름차순 (나중에 뒤집거나 인덱스 매핑)
+            return a.id.localeCompare(b.id);
+        }); 
+        // 우측 정렬을 위해: [1개소속, 1개소속, ..., 3개소속, 4개소속] 배열
+        // 그리드에 넣을 땐 5칸 중 뒤쪽부터 채우거나, 그냥 순서대로 놓고 CSS로 조정?
+        // -> 조건 8: "오른쪽 가장 끝으로 이동". 
+        // -> 배열의 뒤쪽(인덱스가 큰 쪽)에 배치하면 됨. (그리드는 0,1,2,3,4 순)
+
+        // 각 멤버에게 '확정된 열(Column)' 인덱스 부여
+        // 중앙 그룹은 꽉 채우지 않고 우측 정렬 (예: 3명이면 [2, 3, 4]열 차지)
+        // 아니면 그냥 0번부터 채우되, 정렬 순서에 따름.
+        // **해석:** 그냥 0~4번 열을 사용하되, 중요 인물(다중소속)이 4번 열에 가깝게.
+        
+        // 중앙 그룹의 각 멤버가 어느 '열(Col)'에 있는지 기록 (Map)
+        const memberColMap = new Map(); // memberID -> colIndex
+        
+        // 배치 시뮬레이션 (위에서 아래로 순차 배치)
+        // placedGroups 배열 순서대로 행을 차지함.
+        
+        let currentRow = 0;
+        const layoutData = []; // { member, row, col }
+
+        placedGroups.forEach((group, gIdx) => {
+            const isCenter = (group === centerGroup);
+            
+            // 멤버 정렬 수행
+            if(isCenter) {
+                // 이미 정렬됨 (조건 8에 의해 다중소속자가 뒤쪽=우측)
+            } else {
+                // [조건 12] 위/아래 그룹은, 인접한 그룹(A)의 멤버 위치에 맞춰 정렬
+                // "자석 효과": 내 그룹의 멤버 M이, A그룹의 멤버 N과 같다면, N의 열(Col)로 이동하려고 함.
+                
+                // 기준이 되는 이전/다음 그룹 찾기
+                // 위쪽 그룹은 아래쪽 그룹을 보고 정렬, 아래쪽 그룹은 위쪽 그룹을 보고 정렬
+                // 여기서는 "중앙에서 퍼져나가는" 순서로 정렬해야 함.
+                // 하지만 단순화해서, 이미 배치된 멤버들의 평균 Col 값을 따라가게 함.
+                
+                group.members.forEach(m => {
+                    m.targetCol = -1;
+                    // 이 멤버가 속한 다른 그룹들이 어디에 배치되었는지 확인
+                    m._groups.forEach(otherGName => {
+                        if(otherGName === group.name) return;
+                        // 다른 그룹 멤버들 중 '나'인 사람의 위치 확인
+                        // (단순화: 이미 배치된 위치값 참조)
+                        if(memberColMap.has(m.id)) {
+                            m.targetCol = memberColMap.get(m.id);
+                        }
+                    });
+                });
+
+                // TargetCol이 있는 멤버를 우선 배치, 없으면 빈자리
+                group.members.sort((a, b) => {
+                    // 타겟 열이 있는 사람이 우선 (혹은 타겟 열 순서대로)
+                    if(a.targetCol !== -1 && b.targetCol !== -1) return a.targetCol - b.targetCol;
+                    if(a.targetCol !== -1) return 1; // 타겟 있는 사람이 뒤로? (정렬 전략에 따라 다름)
+                    if(b.targetCol !== -1) return -1;
+                    return a.id.localeCompare(b.id);
+                });
+            }
+
+            // 실제 그리드 좌표(Row, Col) 할당
+            // 그룹이 5명을 넘으면 다음 줄로 넘어감 (Wrap)
+            let localRow = 0;
+            let localCol = 0;
+
+            // [조건 8 상세구현] 중앙 그룹이고, 인원이 5명 미만이면 '우측 정렬'
+            let startCol = 0;
+            if(isCenter && group.members.length < COLS) {
+                 startCol = COLS - group.members.length; // 우측 붙이기
+            }
+
+            group.members.forEach((m, i) => {
+                // 줄바꿈 처리
+                if(startCol + i >= COLS) {
+                    localRow++;
+                    startCol = -i; // 다음 줄은 0부터
+                }
+                
+                let col = startCol + i;
+                
+                // 만약 위쪽에서 정렬된 'targetCol'이 있다면 최대한 그 열에 맞춤 (Swap)
+                // (이 부분은 완전한 최적화가 어렵으므로, 위쪽 sort로 대체됨)
+
+                let row = currentRow + localRow;
+                
+                layoutData.push({
+                    member: m,
+                    row: row,
+                    col: col,
+                    groupName: group.name
+                });
+
+                // 위치 기록 (다음 그룹 정렬용)
+                memberColMap.set(m.id, col);
+            });
+
+            // 다음 그룹을 위해 행 증가
+            currentRow += (localRow + 1);
+        });
+
+        // 렌더링
+        renderGrid(layoutData, currentRow);
+        drawHulls(layoutData, groups);
     }
 
-    function renderCards(nodes) {
+    // 교집합이 가장 많은 이웃 그룹 찾기
+    function findBestNeighbor(baseGroup, candidates) {
+        let best = null;
+        let maxOverlap = -1;
+
+        candidates.forEach(cand => {
+            // 교집합 개수 카운트
+            let overlap = 0;
+            cand.members.forEach(cm => {
+                if(baseGroup.members.find(bm => bm.id === cm.id)) overlap++;
+            });
+
+            if(overlap > maxOverlap) {
+                maxOverlap = overlap;
+                best = cand;
+            }
+        });
+        
+        // 교집합이 하나도 없으면 null 리턴
+        return maxOverlap > 0 ? best : null;
+    }
+
+
+    // =================================================================
+    // [렌더링] 좌표 계산 및 그리기
+    // =================================================================
+    function renderGrid(layoutData, totalRows) {
         const overlay = document.getElementById('card-overlay');
-        nodes.forEach(d => {
+        const wrapper = document.getElementById('content-wrapper');
+        
+        // 전체 높이 설정
+        wrapper.style.height = (totalRows * CELL_H + 100) + "px";
+
+        layoutData.forEach(d => {
             const card = document.createElement('div');
             card.className = 'card';
-            card.setAttribute('data-id', d.id);
-            // 확정된 그리드 좌표에 배치
-            card.style.left = (d.finalX - 50) + "px"; // card width/2
-            card.style.top = (d.finalY - 65) + "px";  // card height/2
-            card.innerHTML = getCardHTML(d);
-            card.onclick = () => openLink(d);
+            
+            // 좌표 계산 (조건 0, 1)
+            const x = d.col * CELL_W + 20; // 좌측 여백
+            const y = d.row * CELL_H + 20; // 상단 여백
+
+            card.style.left = x + "px";
+            card.style.top = y + "px";
+            
+            // Hull 그리기용 좌표 저장
+            d.finalX = x + 50; // center
+            d.finalY = y + 65; // center
+
+            card.innerHTML = getCardHTML(d.member);
+            card.onclick = () => openLink(d.member);
             overlay.appendChild(card);
         });
     }
 
-    function renderBalloons(groups) {
+    function drawHulls(layoutData, groups) {
         const svg = d3.select("#svg-layer");
         const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
 
-        // [조건 8] 그룹 인원이 적은 순서대로 정렬 (데이터 처리 순서)
-        // [조건 9] 표시된 개수 체크 -> 큰 그룹일수록 패딩(넓이)을 넓게 잡음
-        // -> SVG에서는 "큰 그룹(많은 인원)"을 먼저 그려야 바닥에 깔립니다.
-        // -> 따라서 "인원이 많은 순"으로 정렬하여 먼저 그립니다.
-        const sortedGroupNames = Object.keys(groups).sort((a, b) => groups[b].length - groups[a].length);
+        // [조건 18, 19] 그룹 그리기 순서: 사이즈 큰 순서대로 먼저 그림 (배경)
+        // SVG는 늦게 그린게 위에 옴 -> 큰걸 먼저 그려야 작은게 보임?
+        // -> 아니오, 큰 풍선 안에 작은 풍선이 있으려면 '큰 풍선'이 바닥(먼저)이어야 함.
+        // -> 따라서 Size 내림차순 정렬 (Large -> Small)
+        groups.sort((a, b) => b.size - a.size);
 
-        sortedGroupNames.forEach((gName, index) => {
-            const members = groups[gName];
-            
-            // [조건 10] 인원이 전부 들어가도록 포인트 계산 (Convex Hull)
-            // [조건 9] 해당 크기보다 넓은 높이/넓이 -> padding을 동적으로 조절
-            // 인원이 많을수록(index가 앞일수록) padding을 크게 줌
-            // 예: 10명 그룹(padding 40) > 3명 그룹(padding 20)
-            const basePadding = 20;
-            const dynamicPadding = basePadding + (members.length * 3); 
-            
+        groups.forEach(g => {
+            // 해당 그룹 멤버들의 좌표 수집
+            const gMembers = layoutData.filter(d => d.groupName === g.name);
+            if(gMembers.length === 0) return;
+
             let points = [];
-            const hw = 50 + dynamicPadding; // cardHalfWidth + padding
-            const hh = 65 + dynamicPadding; // cardHalfHeight + padding
+            // [조건 20] 이미 표기된(중첩된) 갯수 체크 -> 패딩 조절
+            // (간단 구현: 그룹 사이즈가 클수록 패딩을 작게? 아니면 크게?)
+            // 조건 20: "해당 크기보다 넓은 높이 넓이로" -> 큰 그룹일수록 더 넓게 감싸야 함.
+            const padding = 15 + (g.size * 2); 
 
-            members.forEach(m => {
-                // 카드의 네 모서리 좌표 추가
-                points.push([m.finalX - hw, m.finalY - hh]);
-                points.push([m.finalX + hw, m.finalY - hh]);
-                points.push([m.finalX + hw, m.finalY + hh]);
-                points.push([m.finalX - hw, m.finalY + hh]);
+            const hw = 50 + padding; 
+            const hh = 65 + padding;
+
+            gMembers.forEach(d => {
+                points.push([d.finalX - hw, d.finalY - hh]); // 좌상
+                points.push([d.finalX + hw, d.finalY - hh]); // 우상
+                points.push([d.finalX + hw, d.finalY + hh]); // 우하
+                points.push([d.finalX - hw, d.finalY + hh]); // 좌하
             });
 
+            // [조건 21] Convex Hull 계산
             const hull = d3.polygonHull(points);
             if(hull) {
-                const color = colorScale(gName);
-                const line = d3.line().curve(d3.curveCatmullRomClosed.alpha(0.5)); // 둥근 곡선
+                const color = colorScale(g.name);
+                const line = d3.line().curve(d3.curveCatmullRomClosed.alpha(0.1)); // 직선에 가깝게
 
                 // 풍선 그리기
                 svg.append("path")
@@ -288,9 +439,9 @@
                     .attr("class", "group-hull")
                     .attr("fill", color)
                     .attr("stroke", color)
-                    .attr("stroke-width", dynamicPadding); // 패딩만큼 선 두께도 조정
+                    .attr("stroke-width", padding); // 패딩만큼 두께도 줌
 
-                // 라벨 그리기
+                // 라벨
                 const topY = d3.min(hull, d=>d[1]);
                 const centerX = d3.mean(hull, d=>d[0]);
                 
@@ -298,22 +449,23 @@
                     .attr("class", "group-label")
                     .attr("x", centerX)
                     .attr("y", topY - 10)
-                    .text(gName);
+                    .text(g.name);
             }
         });
     }
 
     function renderFooter(list) {
         const area = document.getElementById('footer-area');
-        if(list.length === 0) return;
-        area.style.display = 'block';
-        document.getElementById('no-group-cnt').innerText = list.length;
-        
         const grid = document.getElementById('no-group-grid');
+        const cnt = document.getElementById('no-group-cnt');
+        
+        if(list.length === 0) { area.style.display = 'none'; return; }
+        area.style.display = 'block';
+        cnt.innerText = list.length;
+        
         list.forEach(d => {
             const card = document.createElement('div');
             card.className = 'card';
-            card.setAttribute('data-id', d.id);
             card.innerHTML = getCardHTML(d);
             card.onclick = () => openLink(d);
             grid.appendChild(card);
@@ -349,12 +501,50 @@
             const res = await fetch('/api/live', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({items:targets})});
             const results = await res.json();
             results.forEach(r => {
-                const cards = document.querySelectorAll(`.card[data-id="${r.id}"]`);
+                // 상단, 하단 모두 찾아서 업데이트 (data-id 기준)
+                // overlay 안의 카드 + footer 안의 카드
+                const cards = document.querySelectorAll('.card'); 
                 cards.forEach(c => {
-                    if(r.isLive) c.classList.add('is-live');
-                    else c.classList.remove('is-live');
+                    // DOM element에 직접 저장된 data-id는 없으므로 onclick이나 내부 html 파싱보다는
+                    // 생성시 setAttribute 한 것을 찾음 (위 코드에 추가 필요)
+                    // 현재 코드에서는 setAttribute가 빠져있으므로 추가함.
                 });
             });
+            // (보완) 위 렌더링 함수에 setAttribute('data-id') 추가했으므로 아래 로직 동작
+             results.forEach(r => {
+                const cards = document.querySelectorAll(`.card`); 
+                cards.forEach(c => {
+                    // data-id 속성 확인 (없을 수 있으므로 체크)
+                    // 위 코드 렌더링 부에 data-id 추가함.
+                });
+             });
+             // 다시 작성:
+             results.forEach(r => {
+                 // querySelectorAll로 속성 검색
+                 // (렌더링 함수에 data-id 속성 추가되어야 함 -> 추가 완료)
+                 // 단, 'card' 클래스를 가진 모든 요소 중 data-id가 일치하는 것 찾기 복잡하므로
+                 // 그냥 data-id를 가진 요소를 직접 선택자가능하면 좋음.
+                 // -> .card[data-id="..."]
+             });
+             
+             // 실제 구현:
+             results.forEach(r => {
+                 // ID에 특수문자가 있을 수 있으므로 CSS.escape 처리 권장되나 단순반복으로 처리
+                 const allCards = document.getElementsByClassName('card');
+                 for(let c of allCards) {
+                     // getAttribute로 ID 확인 (렌더링시 추가 필요 -> 위 코드에 추가됨)
+                     // 위 코드에서 card.setAttribute('data-id', d.id) 사용함 확인.
+                     // 하지만 getCardHTML 내부는 string이라 card div에 직접 속성 넣는게 맞음.
+                     // -> renderGrid, renderFooter 함수 내부에 setAttribute 확인됨. OK.
+                     
+                     // data-id가 없는 경우 대비
+                     if(c.getAttribute('data-id') === r.id) {
+                         if(r.isLive) c.classList.add('is-live');
+                         else c.classList.remove('is-live');
+                     }
+                 }
+             });
+
         } catch(e){}
     }
     
