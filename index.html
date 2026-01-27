@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>유앤아이매방랑 Final Fixed</title>
+    <title>유앤아이매방랑 Final Dashboard</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         /* [기본 설정] */
@@ -29,7 +29,6 @@
         /* [컨텐츠 래퍼] */
         #content-wrapper {
             position: relative;
-            /* 5칸 * 320px = 1600px */
             width: 1600px; 
             min-height: 800px;
         }
@@ -51,8 +50,7 @@
             position: absolute; 
             width: 220px; height: 190px;
             background: #fff; border-radius: 12px; 
-            /* 테두리 두께 3px */
-            border: 3px solid #ddd;
+            border: 3px solid #ddd; 
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
             display: flex; flex-direction: row; 
             padding: 12px; box-sizing: border-box;
@@ -61,7 +59,6 @@
         }
         .card:hover { transform: scale(1.05); z-index: 999; box-shadow: 0 8px 25px rgba(0,0,0,0.15); border-color: #bbb; }
         
-        /* Left: Info */
         .card-left {
             flex: 0 0 95px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
             border-right: 1px dashed #eee; padding-right: 8px; margin-right: 8px;
@@ -71,7 +68,6 @@
         .img-wrap { position: relative; width: 65px; height: 65px; margin-bottom: 8px; }
         .profile-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid #f0f0f0; transition: border-color 0.3s; }
         
-        /* 배지 스타일 */
         .status-badge {
             position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%);
             font-size: 0.65rem; font-weight: 800;
@@ -91,10 +87,8 @@
         }
         .id-text { font-size: 0.65rem; color: #999; margin-bottom: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
         
-        /* 애청자 수 */
         .fan-cnt { font-size: 0.7rem; color: #555; font-weight: bold; margin-top: 5px; text-align: center; width: 100%; }
 
-        /* Right: Groups & Buttons */
         .card-right { flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding-bottom: 2px;}
         .group-list {
             flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px;
@@ -115,13 +109,12 @@
         }
         .action-btn:hover { background: #f8f9fa; border-color: #ccc; }
 
-        /* Live State */
         .card.is-live { border-color: #ff4757; background: #fffbfb; }
-        .card.is-live .profile-img { border-color: #ff4757; }
+        .card.is-live .profile-img { border-color: #ff4757; animation: pulse 2s infinite; }
         
         .no-group-grid .card { position: relative; left: auto !important; top: auto !important; }
 
-        /* [풍선 스타일 - 사용자 요청 원복] */
+        /* [풍선 스타일] 둥근 직사각형(LinearClosed) */
         .group-hull { 
             fill-opacity: 0.08; 
             stroke-linejoin: round; 
@@ -129,15 +122,15 @@
             mix-blend-mode: multiply; 
             transition: d 0.5s; 
         }
-        /* [라벨 스타일] 글자색은 JS에서 제어, 가독성 외곽선 추가 */
+        /* [라벨 스타일] */
         .group-label { 
             font-size: 16px; font-weight: 900; 
             text-anchor: middle; 
             pointer-events: none; user-select: none;
-            /* 테두리(Halo) */
-            paint-order: stroke; stroke: rgba(255,255,255,0.9); stroke-width: 6px;
+            paint-order: stroke; stroke: rgba(255,255,255,0.95); stroke-width: 6px;
             stroke-linecap: round; stroke-linejoin: round;
         }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,71,87,0.6); } 70% { box-shadow: 0 0 0 8px rgba(255,71,87,0); } 100% { box-shadow: 0 0 0 0 rgba(255,71,87,0); } }
     </style>
 </head>
 <body>
@@ -163,7 +156,6 @@
 </div>
 
 <script>
-    // [설정]
     const COLS = 5;
     const CARD_W = 220;
     const CARD_H = 190;
@@ -194,14 +186,12 @@
                 runLogic(groupedNodes);
             }
 
-            simulateLiveData(data);
+            // [변경] 실제 서버 API 연동 함수 실행
+            checkLiveReal(data);
 
         } catch (e) { console.error(e); }
     }
 
-    // ==========================================================
-    // [LOGIC] 배치 로직 (기존 유지)
-    // ==========================================================
     function runLogic(members) {
         const groupMap = {};
         members.forEach(m => {
@@ -260,7 +250,6 @@
         let lowerRowCursor = Math.ceil(groupA.members.filter(m=>true).length / COLS);
         if(groupA.members.length===0) lowerRowCursor=0;
 
-        // (1) A
         groupA.members.sort((a, b) => {
             if(a.totalGroupCount !== b.totalGroupCount) return a.totalGroupCount - b.totalGroupCount;
             return a.id.localeCompare(b.id);
@@ -275,7 +264,6 @@
             });
         }
 
-        // (2) Up
         for(let i = idxA - 1; i >= 0; i--) {
             const g = chain[i];
             g.members.sort((a, b) => sortMembers(a, b, memberPositions));
@@ -292,7 +280,6 @@
             }
         }
 
-        // (3) Down
         for(let i = idxA + 1; i < chain.length; i++) {
             const g = chain[i];
             g.members.sort((a, b) => sortMembers(a, b, memberPositions));
@@ -309,7 +296,6 @@
             }
         }
 
-        // 4. Finalize
         let minRow = Infinity, maxRow = -Infinity;
         memberPositions.forEach(pos => {
             if(pos.relRow < minRow) minRow = pos.relRow;
@@ -367,15 +353,12 @@
         return maxOverlap > 0 ? best : null;
     }
 
-    // ==========================================================
-    // [UI & RENDERING]
-    // ==========================================================
+    // [UI] 치지직 버그 수정: ID만 숨기고 버튼/그룹명은 표시
     function getCardHTML(d) {
         const pf = d.platform || 'soop';
         const isSoop = (pf === 'soop' || pf === 'afreeca');
         const platformName = isSoop ? 'SOOP' : 'CHZZK';
-        
-        // [수정] ID 숨김 로직 (치지직은 display:none)
+        // ID만 숨김
         const idDisplay = (!isSoop) ? 'display:none;' : '';
 
         let groupListHTML = '';
@@ -385,7 +368,6 @@
             });
         }
 
-        // [수정] 치지직도 그룹명, 버튼 다 보이게 수정 (단순히 ID만 숨김)
         return `
             <div class="card-left">
                 <div class="pf-text">${platformName}</div>
@@ -424,14 +406,13 @@
         });
     }
 
-    // [요청하신 선 그리기 방식 복원 + 회피 로직 + 라벨 수정]
+    // [선 그리기: 원복 + 회피 + 라벨 수정]
     function renderBalloons(chain, posMap) {
         const svg = d3.select("#svg-layer");
         svg.selectAll("*").remove(); 
         const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
         const drawOrder = [...chain].sort((a, b) => b.size - a.size);
         
-        // 라벨 충돌 방지용 좌표 저장
         const labelPositions = []; 
 
         drawOrder.forEach(g => {
@@ -441,13 +422,14 @@
             g.members.forEach(m => {
                 if(posMap.has(m.id)) {
                     const pos = posMap.get(m.id);
-                    // [회피 로직] 패딩을 적당히 주어 프로필 박스를 감싸도록 함 (타이트하게 4px)
+                    // [회피 로직] 패딩 타이트하게 (4px)
                     const padding = 4; 
                     const x = pos.finalX; 
                     const y = pos.finalY;
                     const w = CARD_W; 
                     const h = CARD_H;
 
+                    // 모서리 점 추가 (관통 방지)
                     points.push([x - padding, y - padding]);       
                     points.push([x + w + padding, y - padding]);   
                     points.push([x + w + padding, y + h + padding]); 
@@ -461,8 +443,7 @@
             const hull = d3.polygonHull(points);
             if(hull) {
                 const color = colorScale(g.name);
-                
-                // [원복] 사용자님이 만족하셨던 그 곡선 스타일 (LinearClosed)
+                // [원복] LinearClosed
                 const line = d3.line().curve(d3.curveLinearClosed); 
 
                 svg.append("path")
@@ -470,37 +451,31 @@
                     .attr("class", "group-hull")
                     .attr("fill", color)
                     .attr("stroke", color)
-                    .attr("stroke-width", 20) // 두께 유지
+                    .attr("stroke-width", 20)
                     .attr("stroke-linejoin", "round"); 
 
                 const topY = d3.min(hull, d=>d[1]);
                 let centerX = d3.mean(hull, d=>d[0]);
-                let labelY = topY - 15; // 기본: 상단
+                let labelY = topY - 15; 
 
-                // [라벨 충돌 방지]
-                // 이미 그려진 라벨과 겹치면 하단으로 내림
-                const bottomY = d3.max(hull, d=>d[1]);
+                // 라벨 충돌 방지
                 let overlap = false;
-                
                 for(let lp of labelPositions) {
-                    // X좌표가 가깝고 Y좌표도 비슷하면 겹친다고 판단
                     if(Math.abs(lp.x - centerX) < 120 && Math.abs(lp.y - labelY) < 40) {
                         overlap = true;
                         break;
                     }
                 }
-
                 if(overlap) {
-                    labelY = bottomY + 35; // 하단으로 이동
+                    labelY = d3.max(hull, d=>d[1]) + 35;
                 }
-                
                 labelPositions.push({x: centerX, y: labelY});
 
                 svg.append("text")
                     .attr("class", "group-label")
                     .attr("x", centerX)
                     .attr("y", labelY)
-                    .style("fill", color) // [글자색] 선 색상과 동일하게
+                    .style("fill", color) // 글자색 동기화
                     .text(g.name);
             }
         });
@@ -532,37 +507,50 @@
         return Array.from(set);
     }
 
-    // [DATA SIMULATION]
-    async function simulateLiveData(data) {
-        console.log("공식 API 미사용 모드: 가상 데이터 생성 중...");
-        
-        const cards = document.querySelectorAll('.card'); 
-        cards.forEach(c => {
-            const isLive = Math.random() > 0.7;
-            const fans = Math.floor(Math.random() * 5000) + 100;
-            
-            const badge = c.querySelector('.status-badge');
-            const fanEl = c.querySelector('.fan-cnt');
-            
-            // [수정] 애청자 수 표기
-            if(fanEl) fanEl.innerText = `애청자: ${fans.toLocaleString()}`;
-
-            if(isLive) {
-                c.classList.add('is-live');
-                if(badge) {
-                    badge.innerText = "LIVE";
-                    badge.classList.remove('badge-off');
-                    badge.classList.add('badge-live');
-                }
-            } else {
-                c.classList.remove('is-live');
-                if(badge) {
-                    badge.innerText = "OFF";
-                    badge.classList.remove('badge-live');
-                    badge.classList.add('badge-off');
-                }
-            }
+    // [데이터 연동] 중계 서버(API/soop_data_repeater.js) 호출
+    async function checkLiveReal(data) {
+        const uniqueIds = [...new Set(data.map(m=>m.id))];
+        const targets = uniqueIds.map(id => {
+            const org = data.find(m=>m.id===id);
+            return {id: org.id, platform: org.platform};
         });
+        
+        try {
+            const res = await fetch('http://localhost:3000/live', {
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({items: targets})
+            });
+            const results = await res.json();
+            
+            results.forEach(r => {
+                const cards = document.querySelectorAll(`.card[data-id="${r.id}"]`);
+                cards.forEach(c => {
+                    const badge = c.querySelector('.status-badge');
+                    const fanEl = c.querySelector('.fan-cnt');
+                    
+                    // 애청자 수 (0이어도 표시)
+                    const fans = r.fans || 0; 
+                    if(fanEl) fanEl.innerText = `애청자: ${fans.toLocaleString()}`;
+
+                    if(r.isLive) {
+                        c.classList.add('is-live');
+                        if(badge) {
+                            badge.innerText = "LIVE";
+                            badge.classList.remove('badge-off');
+                            badge.classList.add('badge-live');
+                        }
+                    } else {
+                        c.classList.remove('is-live');
+                        if(badge) {
+                            badge.innerText = "OFF";
+                            badge.classList.remove('badge-live');
+                            badge.classList.add('badge-off');
+                        }
+                    }
+                });
+            });
+        } catch(e) { console.error('API Error:', e); }
     }
     
     init();
