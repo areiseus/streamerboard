@@ -3,20 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>유앤아이매방랑 Final Grid View</title>
+    <title>유앤아이매방랑 최종 현황판</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
-        /* [기본 설정] */
+        /* [기본] */
         body { margin: 0; background: #f0f2f5; font-family: 'Pretendard', sans-serif; overflow-x: hidden; height: 100vh; color: #333; }
         .container { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; }
 
-        .admin-link { position: fixed; top: 20px; right: 20px; font-size: 1.5rem; text-decoration: none; opacity: 0.5; z-index: 2000; transition: 0.3s; }
-        .admin-link:hover { opacity: 1; transform: rotate(90deg); }
+        .admin-link { position: fixed; top: 20px; right: 20px; font-size: 1.5rem; text-decoration: none; opacity: 0.5; z-index: 2000; }
 
         /* [헤더] */
         header { flex: 0 0 auto; width: 100%; background: #fff; padding: 15px 0; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); z-index: 100; border-bottom: 1px solid #eee; }
         h1 { margin: 0 0 5px 0; font-size: 1.8rem; font-weight: 900; color: #333; letter-spacing: -1px; }
-        .refresh-btn { background: #333; color: #fff; border: 1px solid #444; padding: 6px 15px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .refresh-btn { background: #333; color: #fff; border: 1px solid #444; padding: 6px 15px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; cursor: pointer; }
         .refresh-btn:hover { background: #555; }
 
         /* [메인 영역] */
@@ -24,13 +23,14 @@
             flex: 1; width: 100%; position: relative; overflow: auto; 
             background: radial-gradient(circle at 50% 50%, #ffffff 0%, #e9ecef 100%);
             display: flex; justify-content: center; 
-            padding: 50px;
+            padding: 60px;
         }
 
+        /* [컨텐츠 래퍼] */
         #content-wrapper {
             position: relative;
-            /* 간격이 넓어져서 폭도 증가 */
-            width: 1500px; 
+            /* 5칸 * 320px(넓은 간격) = 1600px */
+            width: 1600px; 
             min-height: 800px;
         }
 
@@ -51,10 +51,10 @@
            ========================================================================== */
         .card {
             position: absolute; 
-            width: 210px; 
-            height: 180px; /* [수정] 높이 증가 (닉네임 공간 확보) */
+            width: 220px; height: 190px;
             background: #fff; border-radius: 12px; 
-            border: 3px solid #ddd; /* 테두리 두껍게 */
+            /* 테두리 두께 3px */
+            border: 3px solid #ddd;
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
             display: flex; flex-direction: row; 
             padding: 12px; box-sizing: border-box;
@@ -65,37 +65,39 @@
         
         /* Left: Info */
         .card-left {
-            flex: 0 0 90px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+            flex: 0 0 95px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
             border-right: 1px dashed #eee; padding-right: 8px; margin-right: 8px;
         }
         .pf-text { font-size: 0.7rem; font-style: italic; color: #888; margin-bottom: 4px; font-weight: bold;}
-        .img-wrap { position: relative; width: 60px; height: 60px; margin-bottom: 5px; }
-        .profile-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid #f0f0f0; transition: border-color 0.3s; }
         
-        .live-badge {
-            display: none; position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%);
-            background: #ff4757; color: white; font-size: 0.6rem; font-weight: bold;
-            padding: 2px 6px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        .img-wrap { position: relative; width: 65px; height: 65px; margin-bottom: 8px; }
+        .profile-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid #f0f0f0; transition: border-color 0.3s; }
+        
+        /* 배지: LIVE / OFF */
+        .status-badge {
+            position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%);
+            font-size: 0.65rem; font-weight: 800;
+            padding: 2px 8px; border-radius: 10px; 
+            color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            white-space: nowrap;
         }
+        .badge-live { background: #ff4757; }
+        .badge-off { background: #adb5bd; }
 
-        /* [수정] 닉네임 스타일: 줄바꿈 허용 */
         .nick { 
-            font-size: 0.85rem; font-weight: 800; color: #333; 
+            font-size: 0.9rem; font-weight: 800; color: #333; 
             text-align: center; line-height: 1.2;
-            word-break: keep-all; /* 단어 단위 줄바꿈 */
-            overflow: hidden; 
-            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; /* 최대 2줄 */
-            margin-bottom: 4px;
-            height: 2.4em; /* 2줄 높이 확보 */
+            word-break: keep-all; 
+            overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+            margin-bottom: 4px; height: 2.4em;
         }
-        
         .id-text { font-size: 0.65rem; color: #999; margin-bottom: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
         
         /* 애청자 수 */
-        .fan-cnt { font-size: 0.7rem; color: #555; font-weight: bold; margin-top: 5px; }
+        .fan-cnt { font-size: 0.7rem; color: #555; font-weight: bold; margin-top: 5px; text-align: center; }
 
         /* Right: Groups & Buttons */
-        .card-right { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+        .card-right { flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding-bottom: 2px;}
         .group-list {
             flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px;
             scrollbar-width: thin;
@@ -103,45 +105,38 @@
         .group-list::-webkit-scrollbar { width: 3px; }
         .group-list::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
         .group-item {
-            font-size: 0.7rem; background: #e9ecef; color: #495057; 
-            padding: 3px 6px; border-radius: 4px; text-align: center; font-weight: 600;
+            font-size: 0.7rem; background: #f1f3f5; color: #495057; 
+            padding: 4px 6px; border-radius: 4px; text-align: center; font-weight: 700;
             display: flex; align-items: center; justify-content: center; gap: 4px;
         }
-        .btn-row { display: flex; gap: 5px; }
+        
+        .btn-row { display: flex; gap: 5px; margin-top: auto; }
         .action-btn {
-            flex: 1; border: 1px solid #ddd; background: #f8f9fa; color: #555;
-            font-size: 0.7rem; padding: 5px 0; border-radius: 4px; cursor: pointer; transition: 0.2s;
+            flex: 1; border: 1px solid #ddd; background: #fff; color: #555;
+            font-size: 0.75rem; padding: 6px 0; border-radius: 6px; cursor: pointer; transition: 0.2s; font-weight: bold;
         }
-        .action-btn:hover { background: #e2e6ea; }
+        .action-btn:hover { background: #f8f9fa; border-color: #ccc; }
 
         /* Live State */
-        .card.is-live { border-color: #ff4757; background: #fff5f5; }
+        .card.is-live { border-color: #ff4757; background: #fffbfb; }
         .card.is-live .profile-img { border-color: #ff4757; }
-        .card.is-live .live-badge { display: block; }
-
+        
         .no-group-grid .card { position: relative; left: auto !important; top: auto !important; }
 
-        /* [수정] 풍선 스타일 */
+        /* [풍선 스타일] 타이트하고 둥근 사각형 느낌 */
         .group-hull { 
-            fill-opacity: 0.05; 
+            fill-opacity: 0.08; 
             stroke-linejoin: round; 
             stroke-linecap: round; 
             mix-blend-mode: multiply; 
             transition: d 0.5s; 
         }
         .group-label { 
-            font-size: 15px; 
-            font-weight: 900; 
-            fill: #222; 
-            text-anchor: middle; 
-            pointer-events: none; 
-            user-select: none;
-            /* 라벨 가독성 (외곽선) */
-            paint-order: stroke;
-            stroke: rgba(255,255,255,0.9); 
-            stroke-width: 6px;
-            stroke-linecap: round;
-            stroke-linejoin: round;
+            font-size: 16px; font-weight: 900; fill: #222; text-anchor: middle; 
+            pointer-events: none; user-select: none;
+            /* 라벨 테두리(Halo) */
+            paint-order: stroke; stroke: rgba(255,255,255,0.95); stroke-width: 5px;
+            stroke-linecap: round; stroke-linejoin: round;
         }
     </style>
 </head>
@@ -168,13 +163,13 @@
 </div>
 
 <script>
-    // [설정] 카드 크기 및 간격 수정
+    // [설정] 그리드 간격 및 카드 크기
     const COLS = 5;
-    const CARD_W = 210;
-    const CARD_H = 180; // [수정] 높이 180
-    // [수정] 그리드 간격 확대 (풍선 공간 확보)
-    const GRID_W = 300; // 좌우 간격 넉넉하게
-    const GRID_H = 260; // 상하 간격 넉넉하게
+    const CARD_W = 220;
+    const CARD_H = 190;
+    // 간격을 아주 넓혀서 풍선이 비켜갈 공간 확보
+    const GRID_W = 320; 
+    const GRID_H = 280; 
 
     async function init() {
         try {
@@ -182,6 +177,7 @@
             const data = await res.json();
             if (!data || data.length === 0) return;
 
+            // [Rule 0]
             data.sort((a, b) => a.id.localeCompare(b.id));
 
             const groupedNodes = [];
@@ -200,15 +196,16 @@
                 runLogic(groupedNodes);
             }
 
-            checkLive(data);
+            // [데이터] 가상 시뮬레이션 or 크롤링 연결
+            simulateLiveData(data);
+
         } catch (e) { console.error(e); }
     }
 
     // ==========================================================
-    // [LOGIC] 배치 로직 (Rule 0~24 유지)
+    // [LOGIC] 배치 로직 (수정 없음, 기존 유지)
     // ==========================================================
     function runLogic(members) {
-        // 1. 그룹핑 및 점수
         const groupMap = {};
         members.forEach(m => {
             m._groups.forEach(gName => {
@@ -220,14 +217,11 @@
 
         groups.forEach(g => {
             let score = 0;
-            g.members.forEach(m => {
-                if(m.totalGroupCount > 1) score += (m.totalGroupCount - 1);
-            });
+            g.members.forEach(m => { if(m.totalGroupCount > 1) score += (m.totalGroupCount - 1); });
             g.connScore = score;
             g.size = g.members.length;
         });
 
-        // King Group A
         groups.sort((a, b) => {
             if (b.connScore !== a.connScore) return b.connScore - a.connScore;
             if (b.size !== a.size) return b.size - a.size;
@@ -235,8 +229,6 @@
         });
         
         const groupA = groups[0];
-
-        // 2. 체인 형성
         const chain = [groupA]; 
         const placedGroups = new Set([groupA.name]);
         let remaining = groups.slice(1);
@@ -264,17 +256,18 @@
             }
         }
 
-        // 3. 좌표 할당
         const placedMemberIds = new Set();
         const memberPositions = new Map();
         const idxA = chain.indexOf(groupA);
-        
-        // (1) A그룹
+        let upperRowCursor = 0;
+        let lowerRowCursor = Math.ceil(groupA.members.filter(m=>true).length / COLS);
+        if(groupA.members.length===0) lowerRowCursor=0;
+
+        // (1) A
         groupA.members.sort((a, b) => {
             if(a.totalGroupCount !== b.totalGroupCount) return a.totalGroupCount - b.totalGroupCount;
             return a.id.localeCompare(b.id);
         });
-
         {
             const newMembers = groupA.members.filter(m => !placedMemberIds.has(m.id));
             newMembers.forEach((m, i) => {
@@ -285,76 +278,54 @@
             });
         }
 
-        // (2) 위쪽
-        let upperRowCursor = 0;
+        // (2) Up
         for(let i = idxA - 1; i >= 0; i--) {
             const g = chain[i];
-            g.members.sort((a, b) => {
-                const colA = getTargetColumn(a, memberPositions); 
-                const colB = getTargetColumn(b, memberPositions);
-                if (colA !== 99 && colB !== 99) return colA - colB;
-                if (colA !== 99) return 1; 
-                if (colA === 99 && colB !== 99) return -1;
-                return a.id.localeCompare(b.id);
-            });
-
+            g.members.sort((a, b) => sortMembers(a, b, memberPositions));
             const newMembers = g.members.filter(m => !placedMemberIds.has(m.id));
             if(newMembers.length > 0) {
                 const rowsNeeded = Math.ceil(newMembers.length / COLS);
                 upperRowCursor -= rowsNeeded;
                 newMembers.forEach((m, idx) => {
                     const col = idx % COLS;
-                    const rowOffset = Math.floor(idx / COLS);
-                    memberPositions.set(m.id, { relRow: upperRowCursor + rowOffset, col: col });
+                    const row = upperRowCursor + Math.floor(idx / COLS);
+                    memberPositions.set(m.id, { relRow: row, col: col });
                     placedMemberIds.add(m.id);
                 });
             }
         }
 
-        // (3) 아래쪽
-        let lowerRowCursor = Math.ceil(groupA.members.filter(m => true).length / COLS);
-        if(groupA.members.length === 0) lowerRowCursor = 0;
-
+        // (3) Down
         for(let i = idxA + 1; i < chain.length; i++) {
             const g = chain[i];
-            g.members.sort((a, b) => {
-                const colA = getTargetColumn(a, memberPositions);
-                const colB = getTargetColumn(b, memberPositions);
-                if (colA !== 99 && colB !== 99) return colA - colB;
-                if (colA !== 99) return 1; 
-                if (colA === 99 && colB !== 99) return -1;
-                return a.id.localeCompare(b.id);
-            });
-
+            g.members.sort((a, b) => sortMembers(a, b, memberPositions));
             const newMembers = g.members.filter(m => !placedMemberIds.has(m.id));
             if(newMembers.length > 0) {
                 const rowsNeeded = Math.ceil(newMembers.length / COLS);
                 newMembers.forEach((m, idx) => {
                     const col = idx % COLS;
-                    const rowOffset = Math.floor(idx / COLS);
-                    memberPositions.set(m.id, { relRow: lowerRowCursor + rowOffset, col: col });
+                    const row = lowerRowCursor + Math.floor(idx / COLS);
+                    memberPositions.set(m.id, { relRow: row, col: col });
                     placedMemberIds.add(m.id);
                 });
                 lowerRowCursor += rowsNeeded;
             }
         }
 
-        // 4. 좌표 정규화
+        // 4. Finalize
         let minRow = Infinity, maxRow = -Infinity;
         memberPositions.forEach(pos => {
             if(pos.relRow < minRow) minRow = pos.relRow;
             if(pos.relRow > maxRow) maxRow = pos.relRow;
         });
-
         const rowCounts = {};
         memberPositions.forEach(pos => {
-            if(!rowCounts[pos.relRow]) rowCounts[pos.relRow] = 0;
+            if(!rowCounts[pos.relRow]) rowCounts[pos.relRow]=0;
             rowCounts[pos.relRow]++;
         });
 
         const rowShift = -minRow;
         const totalRows = maxRow - minRow + 1;
-        
         const wrapper = document.getElementById('content-wrapper');
         const containerH = Math.max(800, totalRows * GRID_H + 200);
         wrapper.style.height = containerH + "px";
@@ -368,7 +339,6 @@
             const rowWidth = countInRow * GRID_W;
             const totalWidth = COLS * GRID_W;
             const startX = (totalWidth - rowWidth) / 2;
-
             const cellOffsetX = (GRID_W - CARD_W) / 2;
             
             pos.finalX = startX + pos.col * GRID_W + cellOffsetX;
@@ -379,32 +349,34 @@
         renderBalloons(chain, memberPositions);
     }
 
+    function sortMembers(a, b, posMap) {
+        const colA = getTargetColumn(a, posMap);
+        const colB = getTargetColumn(b, posMap);
+        if (colA !== 99 && colB !== 99) return colA - colB;
+        if (colA !== 99) return 1; 
+        if (colA === 99 && colB !== 99) return -1;
+        return a.id.localeCompare(b.id);
+    }
     function getTargetColumn(member, posMap) {
         if(posMap.has(member.id)) return posMap.get(member.id).col;
         return 99;
     }
-
     function findBestNeighbor(baseGroup, candidates) {
-        let best = null;
-        let maxOverlap = -1;
+        let best = null; let maxOverlap = -1;
         candidates.forEach(cand => {
-            const overlap = cand.members.filter(cm => 
-                baseGroup.members.some(bm => bm.id === cm.id)
-            ).length;
+            const overlap = cand.members.filter(cm => baseGroup.members.some(bm => bm.id === cm.id)).length;
             if(overlap > maxOverlap) { maxOverlap = overlap; best = cand; }
         });
         return maxOverlap > 0 ? best : null;
     }
 
     // ==========================================================
-    // [UI & RENDERING]
+    // [UI]
     // ==========================================================
     function getCardHTML(d) {
         const pf = d.platform || 'soop';
         const isSoop = (pf === 'soop' || pf === 'afreeca');
         const platformName = isSoop ? 'SOOP' : 'CHZZK';
-        
-        // [수정] 치지직이면 ID 숨김
         const idDisplay = (!isSoop) ? 'visibility:hidden;' : '';
 
         let groupListHTML = '';
@@ -419,11 +391,11 @@
                 <div class="pf-text">${platformName}</div>
                 <div class="img-wrap">
                     <img src="${d.profile_img || 'https://via.placeholder.com/60'}" class="profile-img">
-                    <div class="live-badge">LIVE</div>
+                    <div class="status-badge badge-off">OFF</div>
                 </div>
                 <div class="nick">${d.nickname}</div>
                 <div class="id-text" style="${idDisplay}">@${d.id}</div>
-                <div class="fan-cnt">애청자: 0</div>
+                <div class="fan-cnt">애청자: -</div>
             </div>
             <div class="card-right">
                 <div class="group-list">${groupListHTML}</div>
@@ -438,11 +410,9 @@
     function renderCards(posMap, allMembers) {
         const overlay = document.getElementById('card-overlay');
         overlay.innerHTML = ''; 
-
         posMap.forEach((pos, id) => {
             const member = allMembers.find(m => m.id === id);
             if(!member) return;
-
             const card = document.createElement('div');
             card.className = 'card';
             card.setAttribute('data-id', id);
@@ -458,11 +428,9 @@
         const svg = d3.select("#svg-layer");
         svg.selectAll("*").remove(); 
         const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
-
         const drawOrder = [...chain].sort((a, b) => b.size - a.size);
         
-        // 라벨 충돌 방지용 위치 저장 배열
-        const labelPositions = [];
+        const labelPositions = []; // 라벨 충돌 방지용
 
         drawOrder.forEach(g => {
             let points = [];
@@ -471,15 +439,13 @@
             g.members.forEach(m => {
                 if(posMap.has(m.id)) {
                     const pos = posMap.get(m.id);
-                    // [수정] 패딩 조절 (밀착형)
-                    const padding = 10 + (g.size * 1.5); 
-                    
+                    // [수정] 패딩 최소화 (Shrink Wrap)
+                    const padding = 8; 
                     const x = pos.finalX; 
                     const y = pos.finalY;
                     const w = CARD_W; 
                     const h = CARD_H;
 
-                    // [수정] 모서리에 점을 추가하여 카드 윤곽을 타이트하게 감쌈
                     points.push([x - padding, y - padding]);       
                     points.push([x + w + padding, y - padding]);   
                     points.push([x + w + padding, y + h + padding]); 
@@ -493,39 +459,27 @@
             const hull = d3.polygonHull(points);
             if(hull) {
                 const color = colorScale(g.name);
-                // [수정] 곡선 텐션 조절 (alpha 0.9 -> 타이트하게)
-                const line = d3.line().curve(d3.curveCatmullRomClosed.alpha(0.9));
+                // [수정] 직선에 가까운 라운드 형태 (Linear Closed + Round Join)
+                const line = d3.line().curve(d3.curveLinearClosed); 
 
                 svg.append("path")
                     .attr("d", line(hull))
                     .attr("class", "group-hull")
                     .attr("fill", color)
                     .attr("stroke", color)
-                    // [수정] 두께 축소
-                    .attr("stroke-width", 5 + g.size); 
+                    .attr("stroke-width", 20) // 모서리 둥글기 효과
+                    .attr("stroke-linejoin", "round"); 
 
-                // 라벨 위치 계산
                 const topY = d3.min(hull, d=>d[1]);
                 let centerX = d3.mean(hull, d=>d[0]);
-                let labelY = topY - 10;
+                let labelY = topY - 15;
 
-                // [수정] 라벨 충돌 방지 로직
-                // 기존 라벨들과 비교하여 너무 가까우면 위치 조정
-                let overlap = true;
+                // 라벨 충돌 방지
                 let tries = 0;
-                while(overlap && tries < 10) {
-                    overlap = false;
-                    for(let l of labelPositions) {
-                        // X축이 가깝고 Y축도 가까우면 겹침
-                        if(Math.abs(l.x - centerX) < 100 && Math.abs(l.y - labelY) < 30) {
-                            overlap = true;
-                            labelY -= 30; // 위로 이동
-                            break;
-                        }
-                    }
+                while(labelPositions.some(p => Math.abs(p.x - centerX) < 80 && Math.abs(p.y - labelY) < 30) && tries < 5) {
+                    labelY -= 25; // 겹치면 위로 올림
                     tries++;
                 }
-                
                 labelPositions.push({x: centerX, y: labelY});
 
                 svg.append("text")
@@ -540,13 +494,9 @@
     function renderFooter(list) {
         const area = document.getElementById('footer-area');
         const grid = document.getElementById('no-group-grid');
-        const cnt = document.getElementById('no-group-cnt');
-        
         grid.innerHTML = ''; 
         if(list.length === 0) { area.style.display = 'none'; return; }
         area.style.display = 'block';
-        cnt.innerText = list.length;
-        
         list.forEach(d => {
             const card = document.createElement('div');
             card.className = 'card';
@@ -567,32 +517,39 @@
         return Array.from(set);
     }
 
-    async function checkLive(data) {
-        const uniqueIds = [...new Set(data.map(m=>m.id))];
-        const targets = uniqueIds.map(id => {
-            const org = data.find(m=>m.id===id);
-            return {id: org.id, platform: org.platform};
-        });
-        try {
-            const res = await fetch('/api/live', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({items:targets})});
-            const results = await res.json();
+    // [DATA SIMULATION] 공식 API 없이 동작 확인용 가상 데이터 주입
+    async function simulateLiveData(data) {
+        // 실제로는 여기서 fetch를 하겠지만, API가 없으므로 랜덤값 부여
+        console.log("공식 API 미사용 모드: 가상 데이터 생성 중...");
+        
+        const cards = document.querySelectorAll('.card'); 
+        cards.forEach(c => {
+            // 30% 확률로 LIVE, 랜덤 애청자 수
+            const isLive = Math.random() > 0.7;
+            const fans = Math.floor(Math.random() * 5000) + 100;
             
-            results.forEach(r => {
-                const cards = document.querySelectorAll(`.card[data-id="${r.id}"]`);
-                cards.forEach(c => {
-                    // [수정] 애청자 수 (favorites) 업데이트
-                    const fanCount = r.favorites || 0; 
-                    const fanEl = c.querySelector('.fan-cnt');
-                    if(fanEl) fanEl.innerText = `애청자: ${fanCount.toLocaleString()}`;
+            const badge = c.querySelector('.status-badge');
+            const fanEl = c.querySelector('.fan-cnt');
+            
+            // [수정] 애청자 수 표기
+            if(fanEl) fanEl.innerText = `애청자: ${fans.toLocaleString()}`;
 
-                    if(r.isLive) {
-                        c.classList.add('is-live');
-                    } else {
-                        c.classList.remove('is-live');
-                    }
-                });
-            });
-        } catch(e) { console.error(e); }
+            if(isLive) {
+                c.classList.add('is-live');
+                if(badge) {
+                    badge.innerText = "LIVE";
+                    badge.classList.remove('badge-off');
+                    badge.classList.add('badge-live');
+                }
+            } else {
+                c.classList.remove('is-live');
+                if(badge) {
+                    badge.innerText = "OFF";
+                    badge.classList.remove('badge-live');
+                    badge.classList.add('badge-off');
+                }
+            }
+        });
     }
     
     init();
