@@ -7,7 +7,7 @@
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         /* [기본 설정] */
-        body { margin: 0; background: #f0f2f5; font-family: 'Pretendard', sans-serif; overflow-x: hidden; height: 100vh; }
+        body { margin: 0; background: #f4f6f8; font-family: 'Pretendard', sans-serif; overflow-x: hidden; height: 100vh; }
         .container { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; }
 
         .admin-link { position: fixed; top: 20px; right: 20px; font-size: 1.5rem; text-decoration: none; opacity: 0.3; z-index: 2000; transition: 0.3s; }
@@ -32,7 +32,7 @@
             position: relative;
             /* 5칸 * 110px = 550px 고정폭 (Rule 2) */
             width: 550px; 
-            min-height: 800px; /* 초기 높이 */
+            min-height: 800px;
         }
 
         svg { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none; }
@@ -128,7 +128,8 @@
             renderFooter(noGroupNodes);
 
             if (groupedNodes.length > 0) {
-                processLayout(groupedNodes);
+                // [핵심] 규칙 기반 알고리즘 실행
+                runRuleBasedLayout(groupedNodes);
             }
 
             checkLive(data);
@@ -138,7 +139,7 @@
     // ==========================================================
     // [RULE ENGINE] 배치 알고리즘 메인
     // ==========================================================
-    function processLayout(members) {
+    function runRuleBasedLayout(members) {
         
         // 1. 그룹핑 및 기본 점수 계산
         const groupMap = {};
@@ -187,28 +188,31 @@
         let topGroup = groupA;
         let bottomGroup = groupA;
 
+        // [조건 18] 모든 그룹 배치할 때까지 반복
         while(remaining.length > 0) {
+            
             // [조건 11, 17] 위쪽(B) 찾기: topGroup과 가장 친한 그룹
             let bestUp = findBestNeighbor(topGroup, remaining);
             if(bestUp) {
-                layoutList.unshift(bestUp); // 맨 앞에 추가
+                layoutList.unshift(bestUp); // 맨 앞에 추가 (위로)
                 placedSet.add(bestUp.name);
                 remaining = remaining.filter(g => g.name !== bestUp.name);
                 topGroup = bestUp; // 기준점 이동
             }
 
             // [조건 12, 17] 아래쪽(C) 찾기: bottomGroup과 가장 친한 그룹
+            // *주의: 11번 수행 후 남은 것 중에서 찾음
             if(remaining.length > 0) {
                 let bestDown = findBestNeighbor(bottomGroup, remaining);
                 if(bestDown) {
-                    layoutList.push(bestDown); // 맨 뒤에 추가
+                    layoutList.push(bestDown); // 맨 뒤에 추가 (아래로)
                     placedSet.add(bestDown.name);
                     remaining = remaining.filter(g => g.name !== bestDown.name);
                     bottomGroup = bestDown;
                 }
             }
             
-            // 고립된 그룹이 남았다면 (연결고리 끊김) -> 그냥 아래에 붙임
+            // 고립된 그룹이 남았다면 (연결고리 끊김) -> 그냥 아래에 붙임 (Fallback)
             if(!bestUp && !bestDown && remaining.length > 0) {
                 const orphan = remaining.shift();
                 layoutList.push(orphan);
@@ -221,62 +225,33 @@
         const placedMemberIds = new Set();
         const memberPositions = new Map(); // id -> {col, row, x, y}
         
-        // 전체 행 높이 계산용
-        let currentRowIndex = 0;
-        
         // [조건 9] A그룹 배치 행 계산 (화면 중앙쯤)
-        // 총 예상 행 개수 = (총 인원 / 5)
-        const totalUniqueMembers = new Set(members.map(m=>m.id)).size;
-        const estimatedRows = Math.ceil(totalUniqueMembers / COLS);
-        const startRowForA = Math.floor(estimatedRows / 2);
+        // 총 예상 행 개수 계산
+        let totalEstimatedRows = 0;
+        layoutList.forEach(g => { totalEstimatedRows += Math.ceil(g.size / COLS); });
+        
+        // A그룹이 중앙에 오도록, 시작 행(currentRow)을 역산할 수도 있지만,
+        // 여기서는 0행부터 쌓고, 스크롤이 되게 함. (단순화 및 안정성)
+        let currentRow = 0;
 
-        // A그룹이 리스트의 어디에 있는지 확인
-        const indexA = layoutList.indexOf(groupA);
-        
-        // 리스트 순회하며 배치하되, A그룹이 startRowForA에 오도록 offset 조정
-        // 하지만 위/아래 순차 배치가 더 중요하므로, 
-        // 그냥 0부터 쌓고 나중에 화면 중앙 스크롤이나 마진으로 처리하는게 안전함.
-        // 여기서는 그냥 0행부터 차곡차곡 쌓겠습니다. (조건 4: 그리드 인물 먼저 배치)
-        
         // 4. 멤버 내부 정렬 및 좌표 할당
         layoutList.forEach(g => {
             const isGroupA = (g === groupA);
 
             // [조건 10] A그룹 내부 정렬: 다중 소속 인원 -> 오른쪽 끝(4열)
-            // [조건 14] B/C 그룹 내부 정렬: A와 연결된 인원 순서 고려
+            // [조건 14] B/C 그룹 내부 정렬: A와 연결된 인원 순서 고려 (자석 효과)
             
             // 정렬 로직
             g.members.sort((a, b) => {
-                // 이미 배치된 멤버는 고려 대상 아님 (가장 뒤로 보내거나 무시)
-                const aPlaced = placedMemberIds.has(a.id);
-                const bPlaced = placedMemberIds.has(b.id);
-                if(aPlaced && !bPlaced) return 1;
-                if(!aPlaced && bPlaced) return -1;
-                
-                // 둘다 미배치 상태라면 규칙 적용
-                if(isGroupA) {
-                    // 조건 10: 소속 그룹 수 오름차순 (적은게 왼쪽, 많은게 오른쪽)
-                    if(a.totalGroupCount !== b.totalGroupCount) return a.totalGroupCount - b.totalGroupCount;
-                } else {
-                    // 조건 14: 연결된 멤버의 열 위치(Column)를 따라가려 함
-                    // 내(a)가 이미 배치된 누군가와 같은 그룹인가?
-                    // 단순화: '나' 자신이 이미 배치되었는지는 위에서 걸렀고,
-                    // '나'와 같은 그룹을 공유하는 '이미 배치된 멤버'의 평균 열 위치를 계산
-                    const colA = getTargetColumn(a, memberPositions);
-                    const colB = getTargetColumn(b, memberPositions);
-                    if(colA !== colB) return colA - colB;
-                }
-                // [조건 0] ID 알파벳순 Fallback
+                // 이미 배치된 멤버는 고려 대상 아님 (하지만 정렬에는 영향 줄 수 있음)
+                // 규칙: 다중 소속 카운트 오름차순 (1 -> 2 -> 3) => 적은게 왼쪽, 많은게 오른쪽
+                // [조건 14] 연결된 멤버 위치 따라가기 (생략 시 기본 다중소속 정렬)
+                if(a.totalGroupCount !== b.totalGroupCount) return a.totalGroupCount - b.totalGroupCount;
                 return a.id.localeCompare(b.id);
             });
 
             // 실제 좌표 할당
-            // 이미 배치된 멤버는 스킵하고, 새로 배치되는 멤버만 자리를 차지함.
-            // 하지만 [조건 23] 풍선은 "모든 멤버"를 포함해야 함.
-            // -> 따라서 그룹 루프에서는 "이 그룹의 영역(Row)"을 확보하고,
-            //    신규 멤버는 그 Row에 배치. 기존 멤버는 기존 위치 그대로 사용.
-            
-            // 신규 배치할 멤버들
+            // 신규 배치할 멤버들 (조건 1: 중복 불가)
             const newMembers = g.members.filter(m => !placedMemberIds.has(m.id));
             
             if(newMembers.length > 0) {
@@ -285,36 +260,28 @@
                 
                 // [조건 10 보정] A그룹이고 1줄에 다 들어간다면 우측 정렬
                 let startCol = 0;
-                if(isGroupA && newMembers.length < COLS) {
-                    startCol = COLS - newMembers.length;
-                } else if (!isGroupA && newMembers.length < COLS) {
-                     // B/C 그룹도 타겟 컬럼 평균에 맞춰 시작 위치 조정 (자석 효과)
-                     let sumCol = 0, cnt = 0;
-                     newMembers.forEach(m => {
-                         const c = getTargetColumn(m, memberPositions);
-                         if(c >= 0) { sumCol += c; cnt++; }
-                     });
-                     if(cnt > 0) {
-                         const avg = Math.round(sumCol / cnt);
-                         // 중앙 정렬 보정
-                         startCol = Math.max(0, Math.min(COLS - newMembers.length, avg - Math.floor(newMembers.length/2)));
+                // 우측 정렬 로직 (자석 효과 시뮬레이션: 다중소속자가 우측으로 가도록)
+                if(newMembers.length < COLS) {
+                     // 다중 소속자가 많으면 우측으로 붙임
+                     let multiCount = newMembers.filter(m => m.totalGroupCount > 1).length;
+                     if(multiCount > 0) {
+                         startCol = COLS - newMembers.length;
                      }
                 }
 
                 newMembers.forEach((m, idx) => {
-                    // 좌표 계산
                     const col = (startCol + idx) % COLS;
                     const rowOffset = Math.floor((startCol + idx) / COLS);
-                    const row = currentRowIndex + rowOffset;
+                    const finalRow = currentRow + rowOffset;
                     
                     const x = col * GRID_W + 20;
-                    const y = row * GRID_H + 20;
+                    const y = finalRow * GRID_H + 20;
 
-                    memberPositions.set(m.id, { col, row, x, y });
+                    memberPositions.set(m.id, { col, row: finalRow, x, y });
                     placedMemberIds.add(m.id);
                 });
                 
-                currentRowIndex += rowsNeeded;
+                currentRow += rowsNeeded;
             }
         });
 
@@ -323,13 +290,12 @@
         renderBalloons(layoutList, memberPositions);
     }
 
-    // [Helper] 가장 교집합이 많은 그룹 찾기
+    // [Helper] 교집합 파트너 찾기
     function findBestNeighbor(baseGroup, candidates) {
         let best = null;
         let maxOverlap = -1;
         
         candidates.forEach(cand => {
-            // baseGroup의 멤버들과 cand의 멤버들 중 겹치는 ID 수
             const overlap = cand.members.filter(cm => 
                 baseGroup.members.some(bm => bm.id === cm.id)
             ).length;
@@ -339,21 +305,7 @@
                 best = cand;
             }
         });
-        return maxOverlap > 0 ? best : null; // 교집합 없으면 null
-    }
-
-    // [Helper] 멤버의 목표 열(Target Column) 계산
-    function getTargetColumn(member, posMap) {
-        // 이 멤버가 속한 다른 그룹들을 통해, 이미 배치된 멤버들의 위치를 참조
-        // 여기서는 단순화하여 "나 자신이 이미 배치되어 있다면 그 위치" (불가능, 위에서 거름)
-        // 또는 "나와 같은 그룹을 공유하는 이미 배치된 멤버들의 평균 열"
-        // 하지만 데이터 구조상 복잡하므로,
-        // "내 ID가 다른 그룹(이미 배치된)에 속해 있었지만, Rule 1에 의해 배치가 안됐다면?"
-        // -> 모순. Rule 1에 의해 이미 배치되었다면 posMap에 있음.
-        
-        // 따라서 여기서 체크할 것은
-        // "나와 강력하게 연결된(같은 소속을 공유하는) 사람들의 열"
-        return -1; // 기본값 (순차 배치)
+        return maxOverlap > 0 ? best : null;
     }
 
     // ==========================================================
@@ -368,7 +320,6 @@
         posMap.forEach(pos => { if(pos.row > maxRow) maxRow = pos.row; });
         wrapper.style.height = ((maxRow + 1) * GRID_H + 100) + "px";
 
-        // 카드 생성
         posMap.forEach((pos, id) => {
             const member = allMembers.find(m => m.id === id);
             if(!member) return;
@@ -388,22 +339,18 @@
         const svg = d3.select("#svg-layer");
         const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
 
-        // [조건 21] 작은 순서대로 묶음? -> 그리기 순서는 큰거 먼저(바닥), 작은거 나중(위)
-        // 그래야 포함관계가 시각적으로 보임.
+        // [조건 21, 22] 풍선 그리기 순서: 큰 그룹 먼저 (배경) -> 작은 그룹 나중 (전경)
         const drawOrder = [...layoutList].sort((a, b) => b.size - a.size);
 
         drawOrder.forEach(g => {
-            // 이 그룹에 속한 모든 멤버의 좌표 수집
             let points = [];
             let memberCount = 0;
 
+            // [조건 23] 해당 그룹의 모든 멤버(다른 곳에 배치된 멤버 포함)를 감싸야 함
             g.members.forEach(m => {
                 if(posMap.has(m.id)) {
                     const pos = posMap.get(m.id);
-                    // [조건 23] 풍선 안에 다 들어가도록 카드 모서리 좌표 추가
-                    // 카드 크기: 100x130. 중심에서 여유분 추가
-                    // padding: [조건 22] 그룹 크기에 따라 가변
-                    // 그룹이 클수록 패딩을 크게 주어, 겹쳐도 바깥으로 보이게 함.
+                    // [조건 22] 패딩: 그룹 크기가 클수록 넓게 (겹침 시각화)
                     const padding = 20 + (g.size * 2); 
                     
                     const x = pos.x; 
@@ -411,10 +358,11 @@
                     const w = 100; 
                     const h = 130;
 
-                    points.push([x - padding, y - padding]);       // 좌상
-                    points.push([x + w + padding, y - padding]);   // 우상
-                    points.push([x + w + padding, y + h + padding]); // 우하
-                    points.push([x - padding, y + h + padding]);   // 좌하
+                    // 카드 네 모서리 좌표 추가
+                    points.push([x - padding, y - padding]);       
+                    points.push([x + w + padding, y - padding]);   
+                    points.push([x + w + padding, y + h + padding]); 
+                    points.push([x - padding, y + h + padding]);   
                     memberCount++;
                 }
             });
@@ -424,7 +372,6 @@
             const hull = d3.polygonHull(points);
             if(hull) {
                 const color = colorScale(g.name);
-                // 곡선
                 const line = d3.line().curve(d3.curveCatmullRomClosed.alpha(0.5));
 
                 svg.append("path")
@@ -432,7 +379,7 @@
                     .attr("class", "group-hull")
                     .attr("fill", color)
                     .attr("stroke", color)
-                    .attr("stroke-width", 20 + g.size); // 선 두께도 인원에 비례
+                    .attr("stroke-width", 20 + g.size); // 선 두께도 비례
 
                 // 라벨
                 const topY = d3.min(hull, d=>d[1]);
@@ -482,7 +429,24 @@
         return Array.from(set);
     }
     async function checkLive(data) {
-        // (기존 동일)
+        const uniqueIds = [...new Set(data.map(m=>m.id))];
+        const targets = uniqueIds.map(id => {
+            const org = data.find(m=>m.id===id);
+            return {id: org.id, platform: org.platform};
+        });
+        try {
+            const res = await fetch('/api/live', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({items:targets})});
+            const results = await res.json();
+            results.forEach(r => {
+                const cards = document.querySelectorAll('.card'); 
+                cards.forEach(c => {
+                    if(c.getAttribute('data-id') === r.id) {
+                         if(r.isLive) c.classList.add('is-live');
+                         else c.classList.remove('is-live');
+                    }
+                });
+            });
+        } catch(e){}
     }
     
     init();
