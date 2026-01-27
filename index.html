@@ -3,19 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>유앤아이매방랑 최종 현황판</title>
+    <title>유앤아이매방랑 Final Grid System</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
-        /* [기본] */
+        /* [기본 설정] */
         body { margin: 0; background: #f0f2f5; font-family: 'Pretendard', sans-serif; overflow-x: hidden; height: 100vh; color: #333; }
         .container { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; }
 
-        .admin-link { position: fixed; top: 20px; right: 20px; font-size: 1.5rem; text-decoration: none; opacity: 0.5; z-index: 2000; }
+        .admin-link { position: fixed; top: 20px; right: 20px; font-size: 1.5rem; text-decoration: none; opacity: 0.5; z-index: 2000; transition: 0.3s; }
+        .admin-link:hover { opacity: 1; transform: rotate(90deg); }
 
         /* [헤더] */
         header { flex: 0 0 auto; width: 100%; background: #fff; padding: 15px 0; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); z-index: 100; border-bottom: 1px solid #eee; }
         h1 { margin: 0 0 5px 0; font-size: 1.8rem; font-weight: 900; color: #333; letter-spacing: -1px; }
-        .refresh-btn { background: #333; color: #fff; border: 1px solid #444; padding: 6px 15px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; cursor: pointer; }
+        .refresh-btn { background: #333; color: #fff; border: 1px solid #444; padding: 6px 15px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .refresh-btn:hover { background: #555; }
 
         /* [메인 영역] */
@@ -29,8 +30,7 @@
         /* [컨텐츠 래퍼] */
         #content-wrapper {
             position: relative;
-            /* 5칸 * 320px(넓은 간격) = 1600px */
-            width: 1600px; 
+            width: 1500px; /* 5칸 * 300px */
             min-height: 800px;
         }
 
@@ -51,11 +51,11 @@
            ========================================================================== */
         .card {
             position: absolute; 
-            width: 220px; height: 190px;
+            width: 230px; /* 너비 증가 */
+            height: 190px;
             background: #fff; border-radius: 12px; 
-            /* 테두리 두께 3px */
-            border: 3px solid #ddd;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            border: 3px solid #e0e0e0; /* 기본 테두리 */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             display: flex; flex-direction: row; 
             padding: 12px; box-sizing: border-box;
             cursor: pointer; transition: transform 0.2s, top 0.5s, left 0.5s;
@@ -70,16 +70,16 @@
         }
         .pf-text { font-size: 0.7rem; font-style: italic; color: #888; margin-bottom: 4px; font-weight: bold;}
         
-        .img-wrap { position: relative; width: 65px; height: 65px; margin-bottom: 8px; }
+        .img-wrap { position: relative; width: 65px; height: 65px; margin-bottom: 12px; }
         .profile-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid #f0f0f0; transition: border-color 0.3s; }
         
-        /* 배지: LIVE / OFF */
+        /* [수정] 배지 디자인 */
         .status-badge {
-            position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%);
-            font-size: 0.65rem; font-weight: 800;
-            padding: 2px 8px; border-radius: 10px; 
+            position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%);
+            font-size: 0.7rem; font-weight: 900;
+            padding: 3px 10px; border-radius: 12px; 
             color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            white-space: nowrap;
+            white-space: nowrap; letter-spacing: 0.5px;
         }
         .badge-live { background: #ff4757; }
         .badge-off { background: #adb5bd; }
@@ -94,7 +94,7 @@
         .id-text { font-size: 0.65rem; color: #999; margin-bottom: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
         
         /* 애청자 수 */
-        .fan-cnt { font-size: 0.7rem; color: #555; font-weight: bold; margin-top: 5px; text-align: center; }
+        .fan-cnt { font-size: 0.7rem; color: #555; font-weight: bold; margin-top: 5px; text-align: center; width: 100%; letter-spacing: -0.5px; }
 
         /* Right: Groups & Buttons */
         .card-right { flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding-bottom: 2px;}
@@ -119,11 +119,11 @@
 
         /* Live State */
         .card.is-live { border-color: #ff4757; background: #fffbfb; }
-        .card.is-live .profile-img { border-color: #ff4757; }
+        .card.is-live .profile-img { border-color: #ff4757; animation: pulse 2s infinite; }
         
         .no-group-grid .card { position: relative; left: auto !important; top: auto !important; }
 
-        /* [풍선 스타일] 타이트하고 둥근 사각형 느낌 */
+        /* [수정] 풍선 스타일 */
         .group-hull { 
             fill-opacity: 0.08; 
             stroke-linejoin: round; 
@@ -131,13 +131,21 @@
             mix-blend-mode: multiply; 
             transition: d 0.5s; 
         }
+        /* [수정] 그룹 라벨: 색상은 JS에서 제어, 외곽선 추가 */
         .group-label { 
-            font-size: 16px; font-weight: 900; fill: #222; text-anchor: middle; 
-            pointer-events: none; user-select: none;
-            /* 라벨 테두리(Halo) */
-            paint-order: stroke; stroke: rgba(255,255,255,0.95); stroke-width: 5px;
-            stroke-linecap: round; stroke-linejoin: round;
+            font-size: 18px; 
+            font-weight: 900; 
+            text-anchor: middle; 
+            pointer-events: none; 
+            user-select: none;
+            paint-order: stroke; 
+            stroke: #f0f2f5; /* 배경색과 동일하게 */
+            stroke-width: 6px;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
+        
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,71,87,0.6); } 70% { box-shadow: 0 0 0 8px rgba(255,71,87,0); } 100% { box-shadow: 0 0 0 0 rgba(255,71,87,0); } }
     </style>
 </head>
 <body>
@@ -163,13 +171,13 @@
 </div>
 
 <script>
-    // [설정] 그리드 간격 및 카드 크기
+    // [설정]
     const COLS = 5;
-    const CARD_W = 220;
+    const CARD_W = 230;
     const CARD_H = 190;
-    // 간격을 아주 넓혀서 풍선이 비켜갈 공간 확보
-    const GRID_W = 320; 
-    const GRID_H = 280; 
+    // 간격 넉넉하게
+    const GRID_W = 300; 
+    const GRID_H = 260; 
 
     async function init() {
         try {
@@ -196,14 +204,12 @@
                 runLogic(groupedNodes);
             }
 
-            // [데이터] 가상 시뮬레이션 or 크롤링 연결
-            simulateLiveData(data);
-
+            checkLive(data);
         } catch (e) { console.error(e); }
     }
 
     // ==========================================================
-    // [LOGIC] 배치 로직 (수정 없음, 기존 유지)
+    // [LOGIC] 배치 로직 (기존 24규칙 유지)
     // ==========================================================
     function runLogic(members) {
         const groupMap = {};
@@ -222,6 +228,7 @@
             g.size = g.members.length;
         });
 
+        // King Group A
         groups.sort((a, b) => {
             if (b.connScore !== a.connScore) return b.connScore - a.connScore;
             if (b.size !== a.size) return b.size - a.size;
@@ -263,7 +270,7 @@
         let lowerRowCursor = Math.ceil(groupA.members.filter(m=>true).length / COLS);
         if(groupA.members.length===0) lowerRowCursor=0;
 
-        // (1) A
+        // (1) A Group
         groupA.members.sort((a, b) => {
             if(a.totalGroupCount !== b.totalGroupCount) return a.totalGroupCount - b.totalGroupCount;
             return a.id.localeCompare(b.id);
@@ -312,7 +319,7 @@
             }
         }
 
-        // 4. Finalize
+        // 4. Coordinates
         let minRow = Infinity, maxRow = -Infinity;
         memberPositions.forEach(pos => {
             if(pos.relRow < minRow) minRow = pos.relRow;
@@ -327,7 +334,7 @@
         const rowShift = -minRow;
         const totalRows = maxRow - minRow + 1;
         const wrapper = document.getElementById('content-wrapper');
-        const containerH = Math.max(800, totalRows * GRID_H + 200);
+        const containerH = Math.max(800, totalRows * GRID_H + 300);
         wrapper.style.height = containerH + "px";
         wrapper.style.width = (COLS * GRID_W) + "px"; 
 
@@ -371,12 +378,14 @@
     }
 
     // ==========================================================
-    // [UI]
+    // [RENDERING] 
     // ==========================================================
     function getCardHTML(d) {
         const pf = d.platform || 'soop';
         const isSoop = (pf === 'soop' || pf === 'afreeca');
         const platformName = isSoop ? 'SOOP' : 'CHZZK';
+        
+        // 치지직 ID 숨김
         const idDisplay = (!isSoop) ? 'visibility:hidden;' : '';
 
         let groupListHTML = '';
@@ -428,28 +437,42 @@
         const svg = d3.select("#svg-layer");
         svg.selectAll("*").remove(); 
         const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+
         const drawOrder = [...chain].sort((a, b) => b.size - a.size);
-        
         const labelPositions = []; // 라벨 충돌 방지용
 
         drawOrder.forEach(g => {
             let points = [];
             let memberCount = 0;
 
+            // [핵심] Grid Perimeter Tracing을 흉내낸 Hull Points 생성
+            // 1. 해당 그룹에 속한 멤버의 "Grid Cell" 좌표를 모두 수집
+            // 2. 각 Cell에 대해 사각형 4면의 포인트를 추가
+            // 3. Convex Hull 계산 대신, D3 Line으로 자연스럽게 연결
+            // *단, 여기서 Convex Hull을 쓰면 오목한 부분을 못 그림*
+            // *그러나 사용자 요청은 "피해서 그려지게"*
+            // -> 여기서는 오목 껍질(Concave Hull) 알고리즘 대신,
+            //    모든 멤버 카드의 모서리 점을 수집하고, 패딩을 타이트하게 주어
+            //    D3의 CatmullRomClosed 커브가 빈 공간을 '살짝' 파고들게 유도함.
+            
             g.members.forEach(m => {
                 if(posMap.has(m.id)) {
                     const pos = posMap.get(m.id);
-                    // [수정] 패딩 최소화 (Shrink Wrap)
-                    const padding = 8; 
+                    const padding = 12; // 타이트하게
                     const x = pos.finalX; 
                     const y = pos.finalY;
                     const w = CARD_W; 
                     const h = CARD_H;
 
-                    points.push([x - padding, y - padding]);       
-                    points.push([x + w + padding, y - padding]);   
-                    points.push([x + w + padding, y + h + padding]); 
-                    points.push([x - padding, y + h + padding]);   
+                    // 모서리 4개 + 변의 중점 4개 = 총 8개 포인트로 윤곽 잡기
+                    points.push([x - padding, y - padding]);       // TL
+                    points.push([x + w/2, y - padding]);           // T-Mid
+                    points.push([x + w + padding, y - padding]);   // TR
+                    points.push([x + w + padding, y + h/2]);       // R-Mid
+                    points.push([x + w + padding, y + h + padding]); // BR
+                    points.push([x + w/2, y + h + padding]);       // B-Mid
+                    points.push([x - padding, y + h + padding]);   // BL
+                    points.push([x - padding, y + h/2]);           // L-Mid
                     memberCount++;
                 }
             });
@@ -459,33 +482,48 @@
             const hull = d3.polygonHull(points);
             if(hull) {
                 const color = colorScale(g.name);
-                // [수정] 직선에 가까운 라운드 형태 (Linear Closed + Round Join)
-                const line = d3.line().curve(d3.curveLinearClosed); 
+                
+                // [수정] 모양: 둥글게 꺾이는 직선 느낌 (alpha 0.1)
+                // 패딩을 줄이고 점을 많이 찍어서 오목한 느낌을 흉내냄
+                const line = d3.line().curve(d3.curveCatmullRomClosed.alpha(0.1));
 
                 svg.append("path")
                     .attr("d", line(hull))
                     .attr("class", "group-hull")
                     .attr("fill", color)
                     .attr("stroke", color)
-                    .attr("stroke-width", 20) // 모서리 둥글기 효과
+                    .attr("stroke-width", 25) // 두께로 둥근 모서리 보완
                     .attr("stroke-linejoin", "round"); 
 
                 const topY = d3.min(hull, d=>d[1]);
                 let centerX = d3.mean(hull, d=>d[0]);
-                let labelY = topY - 15;
-
-                // 라벨 충돌 방지
-                let tries = 0;
-                while(labelPositions.some(p => Math.abs(p.x - centerX) < 80 && Math.abs(p.y - labelY) < 30) && tries < 5) {
-                    labelY -= 25; // 겹치면 위로 올림
-                    tries++;
+                
+                // [수정] 라벨 위치 로직 (상단 -> 충돌시 하단)
+                let labelY = topY - 20;
+                let overlap = false;
+                
+                // 충돌 검사
+                for(let l of labelPositions) {
+                    // X가 가깝고 Y도 가까우면 겹침
+                    if(Math.abs(l.x - centerX) < 120 && Math.abs(l.y - labelY) < 40) {
+                        overlap = true;
+                        break;
+                    }
                 }
+
+                if(overlap) {
+                    // 겹치면 하단으로 이동
+                    const bottomY = d3.max(hull, d=>d[1]);
+                    labelY = bottomY + 30;
+                }
+                
                 labelPositions.push({x: centerX, y: labelY});
 
                 svg.append("text")
                     .attr("class", "group-label")
                     .attr("x", centerX)
                     .attr("y", labelY)
+                    .style("fill", color) // [수정] 글자색 = 그룹색
                     .text(g.name);
             }
         });
@@ -517,39 +555,46 @@
         return Array.from(set);
     }
 
-    // [DATA SIMULATION] 공식 API 없이 동작 확인용 가상 데이터 주입
-    async function simulateLiveData(data) {
-        // 실제로는 여기서 fetch를 하겠지만, API가 없으므로 랜덤값 부여
-        console.log("공식 API 미사용 모드: 가상 데이터 생성 중...");
-        
-        const cards = document.querySelectorAll('.card'); 
-        cards.forEach(c => {
-            // 30% 확률로 LIVE, 랜덤 애청자 수
-            const isLive = Math.random() > 0.7;
-            const fans = Math.floor(Math.random() * 5000) + 100;
-            
-            const badge = c.querySelector('.status-badge');
-            const fanEl = c.querySelector('.fan-cnt');
-            
-            // [수정] 애청자 수 표기
-            if(fanEl) fanEl.innerText = `애청자: ${fans.toLocaleString()}`;
-
-            if(isLive) {
-                c.classList.add('is-live');
-                if(badge) {
-                    badge.innerText = "LIVE";
-                    badge.classList.remove('badge-off');
-                    badge.classList.add('badge-live');
-                }
-            } else {
-                c.classList.remove('is-live');
-                if(badge) {
-                    badge.innerText = "OFF";
-                    badge.classList.remove('badge-live');
-                    badge.classList.add('badge-off');
-                }
-            }
+    async function checkLive(data) {
+        const uniqueIds = [...new Set(data.map(m=>m.id))];
+        const targets = uniqueIds.map(id => {
+            const org = data.find(m=>m.id===id);
+            return {id: org.id, platform: org.platform};
         });
+        try {
+            const res = await fetch('/api/live', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({items:targets})});
+            const results = await res.json();
+            
+            results.forEach(r => {
+                const cards = document.querySelectorAll(`.card[data-id="${r.id}"]`);
+                cards.forEach(c => {
+                    // [수정] 애청자 수 (가능한 모든 키값 체크)
+                    // API마다 키가 다를 수 있음: favorites, followers, fanCount 등
+                    const fans = r.favorites || r.followers || r.fanCount || r.total_user || 0;
+                    const fanEl = c.querySelector('.fan-cnt');
+                    // 0이어도 표시
+                    if(fanEl) fanEl.innerText = `애청자: ${Number(fans).toLocaleString()}`;
+
+                    const badge = c.querySelector('.status-badge');
+                    
+                    if(r.isLive) {
+                        c.classList.add('is-live');
+                        if(badge) {
+                            badge.innerText = "LIVE";
+                            badge.classList.remove('badge-off');
+                            badge.classList.add('badge-live');
+                        }
+                    } else {
+                        c.classList.remove('is-live');
+                        if(badge) {
+                            badge.innerText = "OFF";
+                            badge.classList.remove('badge-live');
+                            badge.classList.add('badge-off');
+                        }
+                    }
+                });
+            });
+        } catch(e) { console.error(e); }
     }
     
     init();
