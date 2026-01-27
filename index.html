@@ -132,7 +132,9 @@
             transition: d 0.5s; 
         }
         .group-label { 
-            font-size: 16px; font-weight: 900; fill: #222; text-anchor: middle; 
+            font-size: 16px; font-weight: 900; 
+            /* fill 색상은 JS에서 stroke 색상과 동일하게 설정됨 */
+            text-anchor: middle; 
             pointer-events: none; user-select: none;
             /* 라벨 테두리(Halo) */
             paint-order: stroke; stroke: rgba(255,255,255,0.95); stroke-width: 5px;
@@ -424,13 +426,15 @@
         });
     }
 
+    // [수정된 선긋기 및 라벨 로직 복원]
     function renderBalloons(chain, posMap) {
         const svg = d3.select("#svg-layer");
         svg.selectAll("*").remove(); 
         const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
         const drawOrder = [...chain].sort((a, b) => b.size - a.size);
         
-        const labelPositions = []; // 라벨 충돌 방지용
+        // 라벨 충돌 방지용 (이미 그려진 라벨의 영역 저장)
+        const labelPositions = []; 
 
         drawOrder.forEach(g => {
             let points = [];
@@ -439,8 +443,8 @@
             g.members.forEach(m => {
                 if(posMap.has(m.id)) {
                     const pos = posMap.get(m.id);
-                    // [수정] 패딩 최소화 (Shrink Wrap)
-                    const padding = 8; 
+                    // [회피 로직] 패딩을 적당히 주어 프로필 박스를 감싸도록 함 (기존:8 -> 12로 확대)
+                    const padding = 12; 
                     const x = pos.finalX; 
                     const y = pos.finalY;
                     const w = CARD_W; 
@@ -459,33 +463,46 @@
             const hull = d3.polygonHull(points);
             if(hull) {
                 const color = colorScale(g.name);
-                // [수정] 직선에 가까운 라운드 형태 (Linear Closed + Round Join)
-                const line = d3.line().curve(d3.curveLinearClosed); 
+                // [선 모양] 기존에 좋아하셨던 부드러운 폐곡선 스타일 복원
+                const line = d3.line().curve(d3.curveCatmullRomClosed.alpha(0.5)); 
 
                 svg.append("path")
                     .attr("d", line(hull))
                     .attr("class", "group-hull")
                     .attr("fill", color)
                     .attr("stroke", color)
-                    .attr("stroke-width", 20) // 모서리 둥글기 효과
+                    .attr("stroke-width", 20) 
                     .attr("stroke-linejoin", "round"); 
 
                 const topY = d3.min(hull, d=>d[1]);
                 let centerX = d3.mean(hull, d=>d[0]);
-                let labelY = topY - 15;
+                let labelY = topY - 15; // 기본은 상단
 
-                // 라벨 충돌 방지
-                let tries = 0;
-                while(labelPositions.some(p => Math.abs(p.x - centerX) < 80 && Math.abs(p.y - labelY) < 30) && tries < 5) {
-                    labelY -= 25; // 겹치면 위로 올림
-                    tries++;
+                // [라벨 충돌 방지 로직]
+                // 이미 그려진 라벨들과 위치가 겹치면 하단으로 이동
+                const bottomY = d3.max(hull, d=>d[1]);
+                let overlap = false;
+                
+                // 단순하게 X좌표가 가깝고 Y좌표도 비슷하면 겹친다고 판단
+                for(let lp of labelPositions) {
+                    if(Math.abs(lp.x - centerX) < 100 && Math.abs(lp.y - labelY) < 30) {
+                        overlap = true;
+                        break;
+                    }
                 }
+
+                if(overlap) {
+                    labelY = bottomY + 30; // 하단으로 이동
+                }
+                
+                // 현재 라벨 위치 저장
                 labelPositions.push({x: centerX, y: labelY});
 
                 svg.append("text")
                     .attr("class", "group-label")
                     .attr("x", centerX)
                     .attr("y", labelY)
+                    .style("fill", color) // [글자색] 선 색깔과 동일하게 적용
                     .text(g.name);
             }
         });
