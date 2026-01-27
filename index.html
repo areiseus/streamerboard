@@ -3,64 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>유앤아이매방랑 Rule-Based Grid Final</title>
+    <title>유앤아이매방랑 Final Grid View</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         /* [기본 설정] */
-        body { margin: 0; background: #f0f2f5; font-family: 'Pretendard', sans-serif; overflow-x: hidden; height: 100vh; }
+        body { margin: 0; background: #f4f6f8; font-family: 'Pretendard', sans-serif; overflow-x: hidden; height: 100vh; }
         .container { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; }
 
         .admin-link { position: fixed; top: 20px; right: 20px; font-size: 1.5rem; text-decoration: none; opacity: 0.3; z-index: 2000; transition: 0.3s; }
         .admin-link:hover { opacity: 1; transform: rotate(90deg); }
 
-        /* [1. 헤더] */
+        /* [헤더] */
         header { flex: 0 0 auto; width: 100%; background: #fff; padding: 15px 0; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); z-index: 100; }
         h1 { margin: 0 0 5px 0; font-size: 1.8rem; font-weight: 900; color: #333; }
         .refresh-btn { background: #333; color: #fff; border: none; padding: 6px 15px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; cursor: pointer; }
         .refresh-btn:hover { background: #555; }
 
-        /* [2. 메인 영역] - Rule 27 (자동 크기 조정) */
+        /* [메인 영역] */
         #main-area {
             flex: 1; width: 100%; position: relative; overflow: auto; 
             background: radial-gradient(circle at 50% 50%, #ffffff 0%, #e9ecef 100%);
-            display: flex; justify-content: center; /* 가로 중앙 정렬 */
+            display: flex; justify-content: center; 
             padding: 50px;
         }
 
-        /* 컨텐츠 래퍼 (그리드 실제 공간) */
+        /* [수정됨] 컨텐츠 래퍼: 그리드 간격을 넓혔으므로 전체 폭도 늘림 */
         #content-wrapper {
             position: relative;
-            /* Rule 2: 가로 5칸 (110px * 5) = 550px */
-            width: 550px; 
-            transition: height 0.3s;
+            /* 5칸 * 170px(넓어진 간격) = 850px */
+            width: 850px; 
+            min-height: 800px;
+            /* 시각적 가이드 (개발 확인용, 필요없으면 제거 가능) */
+            /* border: 1px dashed #ddd; */
         }
 
         svg { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none; overflow: visible; }
         #card-overlay { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 2; }
 
-        /* [3. 하단 영역] - Rule 28 */
+        /* [하단 영역] */
         #footer-area {
             flex: 0 0 auto; width: 90%; max-width: 1000px; background: #fff;
             border-top: 1px solid #ddd; padding: 20px; margin-bottom: 20px; border-radius: 10px;
             box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 10;
         }
         .footer-header { font-weight: bold; color: #555; margin-bottom: 10px; border-bottom: 2px solid #eee; padding-bottom: 5px; text-align: center; }
-        /* Rule 28: 중앙 상단, 이름 순서 */
-        .no-group-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+        .no-group-grid { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; }
 
         /* [카드 디자인] */
         .card {
-            position: absolute; /* 메인: 절대 좌표 */
+            position: absolute; 
             width: 100px; height: 130px;
-            background: #fff; border-radius: 8px; border: 2px solid transparent;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            background: #fff; border-radius: 12px; border: 1px solid #e0e0e0;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
             display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
             padding-top: 15px; box-sizing: border-box;
-            cursor: pointer; transition: transform 0.2s, top 0.5s, left 0.5s; /* 부드러운 이동 */
+            cursor: pointer; transition: transform 0.2s, top 0.5s, left 0.5s;
+            z-index: 10; /* 풍선보다 위에 */
         }
-        .card:hover { transform: scale(1.1); z-index: 999; box-shadow: 0 8px 20px rgba(0,0,0,0.2); border-color: #aaa; }
+        .card:hover { transform: scale(1.1); z-index: 999; box-shadow: 0 8px 20px rgba(0,0,0,0.15); border-color: #aaa; }
         
-        /* 하단 카드는 relative */
         .no-group-grid .card { position: relative; left: auto !important; top: auto !important; }
 
         .profile-img { width: 65px; height: 65px; border-radius: 50%; object-fit: cover; border: 2px solid #eee; margin-bottom: 8px; background: #f0f0f0; }
@@ -71,16 +72,22 @@
         .is-live .profile-img { border-color: #ff4757; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,71,87,0.6); } 70% { box-shadow: 0 0 0 8px rgba(255,71,87,0); } 100% { box-shadow: 0 0 0 0 rgba(255,71,87,0); } }
 
-        /* 풍선 스타일 */
-        .group-hull { fill-opacity: 0.08; stroke-linejoin: round; stroke-linecap: round; mix-blend-mode: multiply; transition: d 0.5s; }
-        .group-label { font-size: 13px; font-weight: 800; fill: #444; text-anchor: middle; text-shadow: 1px 1px 0 #fff; pointer-events: none; user-select: none; }
+        /* [풍선 스타일 수정됨] 투명도 조절 및 선 스타일 */
+        .group-hull { 
+            fill-opacity: 0.05; /* 내부 색상을 아주 연하게 */
+            stroke-linejoin: round; 
+            stroke-linecap: round; 
+            mix-blend-mode: multiply; 
+            transition: d 0.5s; 
+        }
+        .group-label { font-size: 14px; font-weight: 800; fill: #444; text-anchor: middle; text-shadow: 2px 2px 0 #fff; pointer-events: none; user-select: none; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <header>
-        <h1>유앤아이매방랑 규칙 기반 배치도</h1>
+        <h1>유앤아이매방랑 자동 배치도</h1>
         <button class="refresh-btn" onclick="location.reload()">🔄 배치 새로고침</button>
     </header>
     <a href="admin.html" class="admin-link">⚙️</a>
@@ -99,10 +106,13 @@
 </div>
 
 <script>
-    // [Rule 2] 그리드 가로 5칸 고정
+    // [수정됨] 그리드 간격 대폭 확대
+    // 카드 크기(100x130)에 비해 넉넉하게 잡아서 풍선이 지나갈 길 확보
     const COLS = 5;
-    const GRID_W = 110; 
-    const GRID_H = 150; 
+    const CARD_W = 100;
+    const CARD_H = 130;
+    const GRID_W = 170; // 좌우 간격 넓힘 (기존 110 -> 170)
+    const GRID_H = 200; // 상하 간격 넓힘 (기존 150 -> 200)
 
     async function init() {
         try {
@@ -110,7 +120,6 @@
             const data = await res.json();
             if (!data || data.length === 0) return;
 
-            // [Rule 0] ID 알파벳순 정렬 (최우선 순위)
             data.sort((a, b) => a.id.localeCompare(b.id));
 
             const groupedNodes = [];
@@ -118,18 +127,14 @@
 
             data.forEach(m => {
                 m._groups = parseGroups(m);
-                // [Rule 8] 그룹 외 카운트 미리 계산
                 m.totalGroupCount = m._groups.length; 
-                
                 if (m._groups.length > 0) groupedNodes.push(m);
                 else noGroupNodes.push(m);
             });
 
-            // [Rule 28, 29] 하단 별도 테이블 (중앙 상단, 이름순)
             renderFooter(noGroupNodes);
 
             if (groupedNodes.length > 0) {
-                // [핵심] 규칙 기반 배치 시작
                 runLogic(groupedNodes);
             }
 
@@ -138,23 +143,20 @@
     }
 
     // ==========================================================
-    // [LOGIC] 29가지 규칙 실행 엔진
+    // [RULE ENGINE] 배치 로직 (이전과 동일, 24개 규칙 준수)
     // ==========================================================
     function runLogic(members) {
         
-        // 1. 그룹핑 및 점수 산정
+        // 1. 그룹핑 및 점수
         const groupMap = {};
         members.forEach(m => {
             m._groups.forEach(gName => {
-                if(!groupMap[gName]) {
-                    groupMap[gName] = { name: gName, members: [], connScore: 0 };
-                }
+                if(!groupMap[gName]) groupMap[gName] = { name: gName, members: [], connScore: 0 };
                 groupMap[gName].members.push(m);
             });
         });
         const groups = Object.values(groupMap);
 
-        // [Rule 8] 연결 점수 (Connection Score)
         groups.forEach(g => {
             let score = 0;
             g.members.forEach(m => {
@@ -164,45 +166,35 @@
             g.size = g.members.length;
         });
 
-        // [Rule 9] King Group A 선정 (점수 > 인원 > 이름)
         groups.sort((a, b) => {
             if (b.connScore !== a.connScore) return b.connScore - a.connScore;
             if (b.size !== a.size) return b.size - a.size;
             return a.name.localeCompare(b.name);
         });
+        
         const groupA = groups[0];
 
-        // 2. 그룹 체인 형성 (Linked List 구조)
-        // [Rule 11, 12, 17, 18] A를 중심으로 위/아래 확장
+        // 2. 체인 형성
         const chain = [groupA]; 
         const placedGroups = new Set([groupA.name]);
         let remaining = groups.slice(1);
-
-        let topRef = groupA;
-        let btmRef = groupA;
+        let topRef = groupA, btmRef = groupA;
 
         while(remaining.length > 0) {
-            // 위쪽(B) 찾기: topRef와 가장 친한 그룹
             let bestUp = findBestNeighbor(topRef, remaining);
             if(bestUp) {
-                chain.unshift(bestUp); // 맨 앞 추가
-                placedGroups.add(bestUp.name);
+                chain.unshift(bestUp); placedGroups.add(bestUp.name);
                 remaining = remaining.filter(g => g.name !== bestUp.name);
                 topRef = bestUp;
             }
-
-            // 아래쪽(C) 찾기: btmRef와 가장 친한 그룹
             if(remaining.length > 0) {
                 let bestDown = findBestNeighbor(btmRef, remaining);
                 if(bestDown) {
-                    chain.push(bestDown); // 맨 뒤 추가
-                    placedGroups.add(bestDown.name);
+                    chain.push(bestDown); placedGroups.add(bestDown.name);
                     remaining = remaining.filter(g => g.name !== bestDown.name);
                     btmRef = bestDown;
                 }
             }
-            
-            // 고립된 그룹 처리 (연결고리 끊김)
             if(!bestUp && !bestDown && remaining.length > 0) {
                 const orphan = remaining.shift();
                 chain.push(orphan);
@@ -210,87 +202,66 @@
             }
         }
 
-        // 3. 인원 배치 (좌표 할당)
+        // 3. 좌표 할당
         const placedMemberIds = new Set();
-        const memberPositions = new Map(); // id -> {row, col, x, y}
-        
-        // [Rule 9] A그룹 배치 행 계산 (화면 중앙 목표)
-        // A그룹이 체인의 어디에 있는가?
+        const memberPositions = new Map();
         const idxA = chain.indexOf(groupA);
-        // 임시로 A를 0행으로 잡고, 위는 음수, 아래는 양수로 배치 후 나중에 Shift
         let currentRow = 0;
-        
-        // 각 그룹의 시작 행(Row) 기록 (상대좌표)
-        const groupStartRows = new Map();
 
-        // (1) A그룹 배치 [Rule 10]
-        // 정렬: 다중소속 많은 순 -> 그래야 오른쪽(4열)부터 채울 때 유리?
-        // Rule 10: "가장 많은 그룹... 순서대로 해당 행에서 가장 오른쪽 이동... 후 좌측 정렬"
-        // -> 해석: 다중 소속 인원이 리스트의 뒤쪽(우측)에 오게 정렬하고, 0열부터 채운다.
+        // (1) A그룹
         groupA.members.sort((a, b) => {
             if(a.totalGroupCount !== b.totalGroupCount) return a.totalGroupCount - b.totalGroupCount;
             return a.id.localeCompare(b.id);
         });
 
         {
-            // 신규 배치 멤버만
             const newMembers = groupA.members.filter(m => !placedMemberIds.has(m.id));
             newMembers.forEach((m, i) => {
-                // Rule 10 좌측 정렬 (0, 1, 2, 3, 4)
                 const col = i % COLS;
                 const row = Math.floor(i / COLS);
-                memberPositions.set(m.id, { relRow: row, col: col }); // relRow: A기준 상대행
+                memberPositions.set(m.id, { relRow: row, col: col });
                 placedMemberIds.add(m.id);
             });
-            groupStartRows.set(groupA.name, 0);
         }
 
-        // (2) 위쪽 그룹 배치 (idxA-1 ~ 0) [Rule 11, 14]
+        // (2) 위쪽
         let upperRowCursor = 0;
         for(let i = idxA - 1; i >= 0; i--) {
             const g = chain[i];
-            
-            // 정렬 [Rule 14]: 아래쪽(직전에 배치된) 그룹과 연결된 멤버 위치 참조 (자석)
             g.members.sort((a, b) => {
                 const colA = getTargetColumn(a, memberPositions); 
                 const colB = getTargetColumn(b, memberPositions);
-                // 타겟 열 오름차순 (같은 열에 줄세우기 위함)
-                if(colA !== 99 && colB !== 99) return colA - colB;
-                if(colA !== 99) return 1; // 타겟 있는 애들을 뒤(우측)로? 아니면 앞(좌측)?
-                                          // Rule 14: "오른쪽부터 순서대로 이동... 후 좌측 정렬"
-                                          // 이 말은 결국 정렬 우선순위임.
-                if(colA === 99 && colB !== 99) return -1;
+                if (colA !== 99 && colB !== 99) return colA - colB;
+                if (colA !== 99) return 1; 
+                if (colA === 99 && colB !== 99) return -1;
                 return a.id.localeCompare(b.id);
             });
 
             const newMembers = g.members.filter(m => !placedMemberIds.has(m.id));
             if(newMembers.length > 0) {
                 const rowsNeeded = Math.ceil(newMembers.length / COLS);
-                upperRowCursor -= rowsNeeded; // 위로 이동
-                
+                upperRowCursor -= rowsNeeded;
                 newMembers.forEach((m, idx) => {
-                    const col = idx % COLS; // 좌측 정렬
+                    const col = idx % COLS;
                     const rowOffset = Math.floor(idx / COLS);
                     memberPositions.set(m.id, { relRow: upperRowCursor + rowOffset, col: col });
                     placedMemberIds.add(m.id);
                 });
-                groupStartRows.set(g.name, upperRowCursor);
             }
         }
 
-        // (3) 아래쪽 그룹 배치 (idxA+1 ~ end) [Rule 12, 14]
-        let lowerRowCursor = Math.ceil(groupA.members.filter(m => true).length / COLS); // A그룹 끝 다음 행
-        if(groupA.members.length === 0) lowerRowCursor = 0; // 방어
+        // (3) 아래쪽
+        let lowerRowCursor = Math.ceil(groupA.members.filter(m => true).length / COLS);
+        if(groupA.members.length === 0) lowerRowCursor = 0;
 
         for(let i = idxA + 1; i < chain.length; i++) {
             const g = chain[i];
-            // 정렬 [Rule 14]
             g.members.sort((a, b) => {
                 const colA = getTargetColumn(a, memberPositions);
                 const colB = getTargetColumn(b, memberPositions);
-                if(colA !== 99 && colB !== 99) return colA - colB;
-                if(colA !== 99) return 1; 
-                if(colA === 99 && colB !== 99) return -1;
+                if (colA !== 99 && colB !== 99) return colA - colB;
+                if (colA !== 99) return 1; 
+                if (colA === 99 && colB !== 99) return -1;
                 return a.id.localeCompare(b.id);
             });
 
@@ -303,70 +274,56 @@
                     memberPositions.set(m.id, { relRow: lowerRowCursor + rowOffset, col: col });
                     placedMemberIds.add(m.id);
                 });
-                groupStartRows.set(g.name, lowerRowCursor);
                 lowerRowCursor += rowsNeeded;
             }
         }
 
-        // 4. 최종 좌표 계산 및 중앙 정렬 (Rule 19, 20)
+        // 4. 좌표 정규화 및 중앙 배치
         let minRow = Infinity, maxRow = -Infinity;
         memberPositions.forEach(pos => {
             if(pos.relRow < minRow) minRow = pos.relRow;
             if(pos.relRow > maxRow) maxRow = pos.relRow;
         });
 
-        // (1) 행별로 몇 명이 있는지 카운트 (Rule 19: 행별 가운데 정렬)
         const rowCounts = {};
         memberPositions.forEach(pos => {
             if(!rowCounts[pos.relRow]) rowCounts[pos.relRow] = 0;
             rowCounts[pos.relRow]++;
         });
 
-        // (2) 좌표 확정
-        // Rule 20: 전체를 그리드 중앙 높이에 위치
-        // 현재 minRow ~ maxRow. 총 행 수 = maxRow - minRow + 1
-        // 화면에 보여질 때는 0부터 시작하도록 Shift
         const rowShift = -minRow;
         const totalRows = maxRow - minRow + 1;
         
-        // 컨테이너 높이 지정
         const wrapper = document.getElementById('content-wrapper');
-        const containerH = Math.max(800, totalRows * GRID_H + 100);
+        const containerH = Math.max(800, totalRows * GRID_H + 200);
         wrapper.style.height = containerH + "px";
 
-        // 세로 중앙 정렬을 위한 Y 오프셋 (Rule 20)
-        // 컨테이너 높이 - 실제 콘텐츠 높이 / 2
         const contentHeight = totalRows * GRID_H;
         const startY = (containerH - contentHeight) / 2;
 
         memberPositions.forEach(pos => {
-            // Rule 19: 행별 가운데 정렬
-            // 현재 행의 인원수: rowCounts[pos.relRow]
-            // 차지하는 너비: count * GRID_W
-            // 남은 여백: (5 * GRID_W) - (count * GRID_W)
-            // 시작 X 오프셋: 여백 / 2
             const countInRow = rowCounts[pos.relRow];
             const rowWidth = countInRow * GRID_W;
             const totalWidth = COLS * GRID_W;
             const startX = (totalWidth - rowWidth) / 2;
 
-            // 절대 좌표 계산
-            pos.finalX = startX + pos.col * GRID_W + 10; // 10: padding
-            pos.finalY = startY + (pos.relRow + rowShift) * GRID_H + 20;
+            // [수정됨] 카드 중앙 정렬 계산 (셀 크기보다 카드가 작으므로 그 차이만큼 보정)
+            // (GRID_W - CARD_W) / 2 만큼 더해줘야 셀의 중앙에 카드가 옴
+            const cellOffsetX = (GRID_W - CARD_W) / 2;
+            
+            pos.finalX = startX + pos.col * GRID_W + cellOffsetX;
+            pos.finalY = startY + (pos.relRow + rowShift) * GRID_H;
         });
 
-        // 5. 그리기 (Render)
         renderCards(memberPositions, members);
         renderBalloons(chain, memberPositions);
     }
 
-    // [Helper] 타겟 열 찾기 (이미 배치된 자신 혹은 연결된 사람)
     function getTargetColumn(member, posMap) {
         if(posMap.has(member.id)) return posMap.get(member.id).col;
-        return 99; // 타겟 없음 (정렬시 뒤로 보냄)
+        return 99;
     }
 
-    // [Helper] 교집합 파트너 찾기
     function findBestNeighbor(baseGroup, candidates) {
         let best = null;
         let maxOverlap = -1;
@@ -374,17 +331,11 @@
             const overlap = cand.members.filter(cm => 
                 baseGroup.members.some(bm => bm.id === cm.id)
             ).length;
-            if(overlap > maxOverlap) {
-                maxOverlap = overlap;
-                best = cand;
-            }
+            if(overlap > maxOverlap) { maxOverlap = overlap; best = cand; }
         });
         return maxOverlap > 0 ? best : null;
     }
 
-    // ==========================================================
-    // [RENDERING]
-    // ==========================================================
     function renderCards(posMap, allMembers) {
         const overlay = document.getElementById('card-overlay');
         overlay.innerHTML = ''; 
@@ -396,7 +347,6 @@
             const card = document.createElement('div');
             card.className = 'card';
             card.setAttribute('data-id', id);
-            // 애니메이션을 위해 초기 위치 잡아줄 수도 있으나 생략
             card.style.left = pos.finalX + "px";
             card.style.top = pos.finalY + "px";
             card.innerHTML = getCardHTML(member);
@@ -410,27 +360,29 @@
         svg.selectAll("*").remove(); 
         const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
 
-        // [Rule 24, 25] 그리기 순서: 큰 그룹 먼저(배경), 작은 그룹 나중(전경)
         const drawOrder = [...chain].sort((a, b) => b.size - a.size);
 
         drawOrder.forEach(g => {
             let points = [];
             let memberCount = 0;
 
-            // [Rule 26] 그룹의 모든 멤버(타 그룹에 배치된 멤버 포함) 좌표 수집
             g.members.forEach(m => {
                 if(posMap.has(m.id)) {
                     const pos = posMap.get(m.id);
-                    // [Rule 25] 패딩: 그룹이 클수록 넓게 (겹침 시각화)
-                    const padding = 15 + (g.size * 2.5);
-                    const w = 100; 
-                    const h = 130;
+                    // [수정됨] 패딩 축소 (밀착)
+                    // 기존: 20 + (size * 2) -> 수정: 10 + size
+                    const padding = 10 + g.size; 
+                    
+                    const x = pos.finalX; 
+                    const y = pos.finalY;
+                    const w = CARD_W; 
+                    const h = CARD_H;
 
-                    // 카드 네 모서리 + 패딩
-                    points.push([pos.finalX - padding, pos.finalY - padding]);       
-                    points.push([pos.finalX + w + padding, pos.finalY - padding]);   
-                    points.push([pos.finalX + w + padding, pos.finalY + h + padding]); 
-                    points.push([pos.finalX - padding, pos.finalY + h + padding]);   
+                    // [수정됨] 카드 경계에 더 가깝게 좌표 수집
+                    points.push([x - padding, y - padding]);       
+                    points.push([x + w + padding, y - padding]);   
+                    points.push([x + w + padding, y + h + padding]); 
+                    points.push([x - padding, y + h + padding]);   
                     memberCount++;
                 }
             });
@@ -440,23 +392,24 @@
             const hull = d3.polygonHull(points);
             if(hull) {
                 const color = colorScale(g.name);
-                const line = d3.line().curve(d3.curveCatmullRomClosed.alpha(0.5));
+                // [수정됨] 곡선 텐션을 줄여서 더 네모나게(타이트하게) 만듦 (alpha 0.5 -> 0.1)
+                const line = d3.line().curve(d3.curveCatmullRomClosed.alpha(0.1));
 
                 svg.append("path")
                     .attr("d", line(hull))
                     .attr("class", "group-hull")
                     .attr("fill", color)
                     .attr("stroke", color)
-                    .attr("stroke-width", 20 + g.size); 
+                    // [수정됨] 두께 감소 (기존 20+size -> 8+size)
+                    .attr("stroke-width", 8 + g.size); 
 
-                // 라벨
                 const topY = d3.min(hull, d=>d[1]);
                 const centerX = d3.mean(hull, d=>d[0]);
                 
                 svg.append("text")
                     .attr("class", "group-label")
                     .attr("x", centerX)
-                    .attr("y", topY - 10)
+                    .attr("y", topY - 10) // 라벨도 더 가깝게
                     .text(g.name);
             }
         });
