@@ -1,33 +1,44 @@
-import express from 'express';
-import cors from 'cors';
 import { SoopClient } from 'soop-extension';
 
-const app = express();
-const PORT = 3000;
+// Vercel Serverless Function 형식
+export default async function handler(req, res) {
+    // 1. CORS 처리 (다른 곳에서도 접속 가능하게)
+    res.setHeader('Access-Control-Allow-Credentials', true);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+    res.setHeader(
+        'Access-Control-Allow-Headers',
+        'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+    );
 
-app.use(cors());
-app.use(express.json());
+    // OPTIONS 요청(사전 검사)이면 바로 종료
+    if (req.method === 'OPTIONS') {
+        res.status(200).end();
+        return;
+    }
 
-const client = new SoopClient();
+    // POST 요청만 처리
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method Not Allowed' });
+    }
 
-app.post('/live', async (req, res) => {
     const { items } = req.body;
-    const results = [];
+    if (!items) {
+        return res.status(400).json({ error: 'No items provided' });
+    }
 
-    console.log(`[LOG] 요청 수신: ${items.length}명`);
+    const client = new SoopClient();
+    const results = [];
 
     await Promise.all(items.map(async (item) => {
         if (item.platform === 'soop' || item.platform === 'afreeca') {
             try {
-                // 1. 방송 상태 (LIVE 여부)
                 const liveDetail = await client.live.detail(item.id);
-                // 2. 방송국 정보 (애청자 수) - 방송 유무와 상관없이 조회됨
                 const stationInfo = await client.channel.station(item.id);
 
                 const isLive = liveDetail && liveDetail.broad_no ? true : false;
                 const viewers = isLive ? (liveDetail.total_view_cnt || 0) : 0;
                 
-                // 애청자(즐겨찾기) 수 찾기
                 let fans = 0;
                 if (stationInfo && stationInfo.station) {
                     fans = stationInfo.station.upd || stationInfo.station.total_ok || 0;
@@ -41,18 +52,12 @@ app.post('/live', async (req, res) => {
                     fans: parseInt(fans)
                 });
             } catch (e) {
-                console.error(`[ERROR] ${item.id} 조회 실패:`, e.message);
                 results.push({ id: item.id, isLive: false, viewers: 0, fans: 0 });
             }
         } else {
-            // 치지직 등 타 플랫폼 (현재는 0 처리)
             results.push({ id: item.id, platform: item.platform, isLive: false, viewers: 0, fans: 0 });
         }
     }));
 
-    res.json(results);
-});
-
-app.listen(PORT, () => {
-    console.log(`✅ SOOP 데이터 중계 서버 가동 중 (http://localhost:${PORT})`);
-});
+    res.status(200).json(results);
+}
