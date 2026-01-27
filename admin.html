@@ -307,37 +307,52 @@
         } catch(e) { console.error(e); }
     }
 
-    // 7. [핵심] 모두 갱신 & 로그 출력
+
+
+
+        // 7. [핵심] 모두 갱신 & 로그 출력 (수정됨)
     async function updateFull() {
-        if(!confirm('전체 갱신하시겠습니까?')) return;
+        if(!confirm('DB에 있는 모든 스트리머 정보를 갱신하시겠습니까?')) return;
 
         // 로그창 찾기
         const logWindow = document.getElementById('static-log-window');
         const btn = document.querySelector('button[onclick="updateFull()"]');
 
         if(logWindow) {
-            logWindow.innerHTML = "🔄 [1/3] 서버 통신 준비 중...<br>";
+            logWindow.innerHTML = "🔄 [1/3] 현재 DB 목록 가져오는 중...<br>";
             logWindow.scrollTop = logWindow.scrollHeight;
         }
-        if(btn) btn.innerText = '⏳ 처리중...';
+        if(btn) btn.innerText = '⏳ 목록 확보 중...';
 
         try {
-            // API 호출
+            // [단계 1] DB에 있는 리스트 먼저 가져오기 (이게 없어서 빈값이었음)
+            const listRes = await fetch('/api/get_list');
+            const currentList = await listRes.json();
+
+            if (!currentList || currentList.length === 0) {
+                if(logWindow) logWindow.innerHTML += "❌ DB에 저장된 스트리머가 없습니다.<br>";
+                return;
+            }
+
+            if(logWindow) logWindow.innerHTML += `🔄 [2/3] 총 ${currentList.length}명 데이터 서버로 전송...<br>`;
+
+            // [단계 2] 가져온 리스트를 다시 register_batch로 보내서 URL 재성성 요청
             const res = await fetch('/api/register_batch', { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: [] }) 
+                body: JSON.stringify({ items: currentList }) // <--- 이제 진짜 데이터를 보냅니다
             });
             const json = await res.json();
 
-            // 로그 뿌리기
+            // [단계 3] 로그 뿌리기
             if(logWindow && json.logs && Array.isArray(json.logs)) {
-                logWindow.innerHTML = ""; // 초기화
+                logWindow.innerHTML = ""; // 기존 내용 지우고 새로 씀
                 
                 json.logs.forEach(msg => {
                     let style = "color: #ccc;";
+                    // 로그 색상 꾸미기
                     if(msg.includes('에러') || msg.includes('실패')) style = "color: #ff5555; font-weight:bold;";
-                    else if(msg.includes('성공')) style = "color: #55ff55;";
+                    else if(msg.includes('성공')) style = "color: #55ff55; font-weight:bold;";
                     else if(msg.includes('주소')) style = "color: #ffff00;"; 
                     else if(msg.includes('SOOP')) style = "color: #00ffff;";
 
@@ -345,18 +360,21 @@
                 });
                 logWindow.innerHTML += "<br>✅ <strong>모든 작업이 완료되었습니다.</strong>";
                 logWindow.scrollTop = logWindow.scrollHeight; 
-            } else if (logWindow) {
-                logWindow.innerHTML += `<br>⚠️ 서버 로그 없음: ${JSON.stringify(json)}`;
+            } else {
+                if(logWindow) logWindow.innerHTML += `<br>⚠️ 서버 로그 없음: ${JSON.stringify(json)}`;
             }
 
         } catch (e) {
-            if(logWindow) logWindow.innerHTML += `<br>❌ [에러] ${e.message}`;
+            if(logWindow) logWindow.innerHTML += `<br>❌ [치명적 에러] ${e.message}`;
             console.error(e);
         } finally {
             if(btn) btn.innerText = '🔄 [모두 갱신]';
-            loadDBList(); 
+            loadDBList(); // 테이블 갱신
         }
     }
+
+
+        
 </script>    
 </body>
 </html>
