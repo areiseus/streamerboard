@@ -385,29 +385,57 @@
         } catch(e) { alert('삭제 오류: ' + e.message); }
     }
 
-    // 6. DB 목록 로드
+
+
+        // 6. DB 목록 로드 (중복 제거 로직 강화)
     async function loadDBList() {
         try {
             const res = await fetch('/api/get_list');
             const data = await res.json();
-            data.forEach(m => { if(m.group_name) groupSet.add(m.group_name); });
+            
+            // [중복 방지] Set을 사용하면 자동으로 중복된 값은 무시됩니다.
+            groupSet = new Set(); 
+
+            data.forEach(m => {
+                // 공통 추가 함수 (공백 제거 + 빈값 체크)
+                const addGroupSafe = (text) => {
+                    if (!text) return; // 내용 없으면 패스
+                    const cleanName = text.trim();
+                    if (cleanName) groupSet.add(cleanName); // Set이 알아서 중복 제거함
+                };
+
+                // 1. 기존 group_name (쉼표로 쪼개서 넣기)
+                if (m.group_name) {
+                    m.group_name.split(',').forEach(g => addGroupSafe(g));
+                }
+
+                // 2. group_1, 2, 3 추가 (이미 있는 이름이면 Set이 알아서 제외함)
+                addGroupSafe(m.group_1);
+                addGroupSafe(m.group_2);
+                addGroupSafe(m.group_3);
+            });
+
+            // 화면 갱신 (그룹 배지, 선택창)
             renderGroups();
+            
             document.getElementById('totalCnt').innerText = data.length;
             
+            // 테이블 그리기
             document.getElementById('dbBody').innerHTML = data.map(m => `
                 <tr>
                     <td style="color:#f1c40f;">${m.group_name || '-'}</td>
                     <td><span class="badge ${m.platform}">${m.platform}</span></td>
                     <td>${m.id}</td>
-                    <td>${m.nickname}</td>
+                    <td>${m.nickname || '-'}</td>
                     <td>
                         <button class="btn-delete" onclick="deleteStreamer('${m.id}')">삭제</button>
                     </td>
                 </tr>
             `).join('');
+
         } catch(e) { console.error(e); }
     }
-
+        
     // 7. 모두 갱신 (수정됨: DB 명단 가져와서 처리)
     async function updateFull() {
         if(!confirm('DB에 있는 모든 스트리머 정보를 갱신하시겠습니까?')) return;
