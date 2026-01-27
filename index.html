@@ -1,63 +1,117 @@
 <!DOCTYPE html>
-
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Streamer Board</title>
     <style>
-        body { margin: 0; background: #F0F2F5; font-family: 'Pretendard', sans-serif; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; position: relative; }
+        body { margin: 0; background: #1a1a1a; font-family: 'Pretendard', sans-serif; padding: 20px; color: #fff; }
+        .container { max-width: 1100px; margin: 0 auto; position: relative; }
         
-        .group-title { font-size: 1.5rem; font-weight: bold; margin: 30px 0 15px; border-bottom: 2px solid #ddd; display:block; color:#333; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
+        /* 그룹 제목 스타일 */
+        .group-title { 
+            font-size: 1.4rem; font-weight: bold; margin: 40px 0 15px; 
+            border-bottom: 2px solid #444; padding-bottom: 10px; display:block; color:#f1c40f; 
+        }
         
-        .card { background: white; padding: 20px; border-radius: 15px; text-align: center; cursor: pointer; transition: 0.2s; border: 2px solid transparent; }
-        .card:hover { transform: translateY(-5px); }
-        .card.is-live { border-color: #ff4757; background: #fff0f0; }
+        /* 그리드 레이아웃 */
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); 
+            gap: 20px; 
+        }
         
-        .profile-img { width: 80px; height: 80px; border-radius: 50%; background: #eee; object-fit: cover; margin-bottom: 10px; }
-        .badge { font-size: 0.8rem; padding: 2px 5px; border-radius: 4px; color: white; margin-right: 5px;}
-        .soop { background: #42C769; } .chzzk { background: #00E59D; color:#333; }
-        .status { color: #888; margin-top: 5px; font-size: 0.9rem; }
+        /* 카드 스타일 */
+        .card { 
+            background: #2a2a2a; padding: 20px; border-radius: 12px; 
+            text-align: center; cursor: pointer; transition: 0.2s; 
+            border: 2px solid #333; position: relative; overflow: hidden;
+        }
+        .card:hover { transform: translateY(-5px); border-color: #555; background: #333; }
         
-        /* 관리자 버튼: 그냥 링크로 변경 */
+        /* 라이브 상태 스타일 */
+        .card.is-live { border-color: #ff4757; background: #2d1a1a; box-shadow: 0 0 15px rgba(255, 71, 87, 0.2); }
+        
+        .profile-img { 
+            width: 70px; height: 70px; border-radius: 50%; 
+            background: #444; object-fit: cover; margin-bottom: 10px; border: 2px solid #444; 
+        }
+        .card.is-live .profile-img { border-color: #ff4757; }
+
+        .name { font-size: 1rem; font-weight: bold; margin: 5px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        .badge { font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; color: #111; font-weight: bold; margin-right: 5px; vertical-align: middle; }
+        .soop { background: #42C769; } .chzzk { background: #00E59D; }
+        
+        .status { color: #888; font-size: 0.85rem; margin-top: 5px; }
+        
+        /* 관리자 링크 */
         .admin-link { 
             position: absolute; top: 0; right: 0; 
             font-size: 1.5rem; text-decoration: none; cursor: pointer;
-            transition: transform 0.3s;
+            transition: transform 0.3s; opacity: 0.5;
         }
-        .admin-link:hover { transform: rotate(90deg); }
+        .admin-link:hover { transform: rotate(90deg); opacity: 1; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1 style="text-align:center">Streamer Board</h1>
+    <h1 style="text-align:center; margin-bottom: 40px;">📺 Streamer Live Board</h1>
     
     <a href="admin.html" class="admin-link" title="관리자 페이지">⚙️</a>
     
-    <div id="board"><p style="text-align:center">데이터 불러오는 중...</p></div>
+    <div id="board">
+        <p style="text-align:center; color:#777; margin-top:50px;">데이터를 불러오는 중입니다...</p>
+    </div>
 </div>
 
 <script>
-    // --- [현황판 로직] ---
+    // -----------------------------------------------------------
+    // [핵심 로직]
+    // 1. group_name, group_1, 2, 3을 모두 읽어서
+    // 2. 해당되는 모든 그룹 섹션에 카드를 복제해서 뿌림
+    // 3. 라이브 확인 시 모든 카드를 동시에 갱신 (querySelectorAll)
+    // -----------------------------------------------------------
+
     async function init() {
         try {
             const res = await fetch('/api/get_list');
             const data = await res.json();
 
             if (!data || data.length === 0) {
-                document.getElementById('board').innerHTML = '<p style="text-align:center">등록된 스트리머가 없습니다.</p>';
+                document.getElementById('board').innerHTML = '<p style="text-align:center; margin-top:50px;">등록된 스트리머가 없습니다.</p>';
                 return;
             }
 
-            // DB의 group_id 기준으로 묶기
+            // 그룹별로 데이터 분류
             const grouped = {};
+            
             data.forEach(m => {
-                const gName = m.group_id || '미분류'; 
-                if (!grouped[gName]) grouped[gName] = [];
-                grouped[gName].push(m);
+                // 한 명의 스트리머가 속한 모든 그룹 이름을 수집 (Set으로 중복 제거)
+                const myGroups = new Set();
+
+                // 1) 기존 group_name (쉼표 구분) 처리
+                if (m.group_name) {
+                    m.group_name.split(',').forEach(g => {
+                        const clean = g.trim();
+                        if(clean) myGroups.add(clean);
+                    });
+                }
+
+                // 2) 신규 컬럼 (group_1, 2, 3) 처리
+                if (m.group_1 && m.group_1.trim()) myGroups.add(m.group_1.trim());
+                if (m.group_2 && m.group_2.trim()) myGroups.add(m.group_2.trim());
+                if (m.group_3 && m.group_3.trim()) myGroups.add(m.group_3.trim());
+
+                // 만약 그룹이 하나도 없으면 '미분류'로 처리
+                if (myGroups.size === 0) myGroups.add('미분류');
+
+                // 수집된 그룹들에 각각 멤버 추가
+                myGroups.forEach(gName => {
+                    if (!grouped[gName]) grouped[gName] = [];
+                    grouped[gName].push(m);
+                });
             });
 
             render(grouped);
@@ -73,28 +127,36 @@
         const board = document.getElementById('board');
         board.innerHTML = '';
 
+        // 그룹 이름 순으로 정렬하여 렌더링
         Object.keys(groupedData).sort().forEach(gName => {
             const members = groupedData[gName];
             
+            // 섹션 생성
             const section = document.createElement('div');
-            section.innerHTML = `<span class="group-title">${gName}</span><div class="grid"></div>`;
+            section.innerHTML = `<span class="group-title">📂 ${gName}</span><div class="grid"></div>`;
             const grid = section.querySelector('.grid');
 
             members.forEach(m => {
-                const pf = m.platform || 'soop';
-                const link = pf === 'chzzk' 
-                    ? `https://chzzk.naver.com/live/${m.id}` 
-                    : `https://play.afreecatv.com/${m.id}`;
-
+                const pf = m.platform || 'soop'; // 기본값
+                const isSoop = pf === 'soop' || pf === 'afreeca';
+                
+                // 링크 생성
+                const link = isSoop
+                    ? `https://play.afreecatv.com/${m.id}`
+                    : `https://chzzk.naver.com/live/${m.id}`;
+                
+                // 카드 생성
                 const card = document.createElement('div');
                 card.className = 'card';
-                card.id = `card-${m.id}`;
+                
+                // [중요] ID 대신 data-id 속성 사용 (한 명이 여러 곳에 나타나므로)
+                card.setAttribute('data-id', m.id); 
                 card.onclick = () => window.open(link);
 
                 card.innerHTML = `
                     <img src="${m.profile_img || 'https://via.placeholder.com/80'}" class="profile-img">
-                    <div><span class="badge ${pf}">${pf==='chzzk'?'C':'S'}</span></div>
-                    <h3 style="margin:10px 0 5px; font-size:1.1rem">${m.nickname || m.id}</h3>
+                    <div><span class="badge ${isSoop ? 'soop' : 'chzzk'}">${isSoop ? 'SOOP' : 'CHZZK'}</span></div>
+                    <div class="name">${m.nickname || m.id}</div>
                     <p class="status">오프라인</p>
                 `;
                 grid.appendChild(card);
@@ -103,23 +165,45 @@
         });
     }
 
+    // 라이브 상태 체크 (배치 처리)
     async function checkLive(allMembers) {
-        const targets = allMembers.map(m => ({ id: m.id, platform: m.platform }));
-        const res = await fetch('/api/live', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ items: targets })
+        // 중복 제거된 ID 목록 만들기 (API 호출 최소화)
+        const uniqueIds = [...new Set(allMembers.map(m => m.id))];
+        
+        // 요청 데이터 구성 (ID와 플랫폼 정보 매핑이 필요하므로 원본 데이터 활용)
+        const targets = uniqueIds.map(id => {
+            const original = allMembers.find(m => m.id === id);
+            return { id: original.id, platform: original.platform };
         });
-        const results = await res.json();
 
-        results.forEach(r => {
-            const card = document.getElementById(`card-${r.id}`);
-            if(card && r.isLive) {
-                card.classList.add('is-live');
-                card.querySelector('.status').innerHTML = `<span style="color:red;font-weight:bold">🔴 ${r.viewers.toLocaleString()}명</span>`;
-            }
-        });
+        try {
+            const res = await fetch('/api/live', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ items: targets })
+            });
+            const results = await res.json();
+
+            // 결과 반영
+            results.forEach(r => {
+                // [핵심] querySelectorAll로 화면에 있는 '모든' 해당 멤버 카드를 찾아서 동시에 업데이트
+                const cards = document.querySelectorAll(`.card[data-id="${r.id}"]`);
+                
+                cards.forEach(card => {
+                    const statusText = card.querySelector('.status');
+                    
+                    if(r.isLive) {
+                        card.classList.add('is-live');
+                        statusText.innerHTML = `<span style="color:#ff4757; font-weight:bold;">🔴 LIVE (${r.viewers ? r.viewers.toLocaleString() : 0}명)</span>`;
+                    } else {
+                        card.classList.remove('is-live');
+                        statusText.innerText = '오프라인';
+                    }
+                });
+            });
+        } catch(e) { console.error("라이브 체크 실패:", e); }
     }
 
+    // 시작
     init();
 </script>
 </body>
