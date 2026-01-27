@@ -1,4 +1,4 @@
-export default async function handler(req, res) {
+import { createClient } from '@supabase/supabase-js'; {
     try {
         // ✅ [옮기기] 여기! 함수 안으로 이사를 시키십시오.
         // (형님이 설정한 변수명 그대로 넣었습니다)
