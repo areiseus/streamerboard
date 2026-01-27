@@ -1,20 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-    process.env.streamer_db_URL,
-    process.env.streamer_dbkey_anon
-);
-
 export default async function handler(req, res) {
-    const { items } = req.body; 
-    
-    // [핵심] 형님 화면으로 보낼 로그 보따리
+    // 1. DB 연결 (함수 안에서 안전하게)
+    const supabase = createClient(
+        process.env.streamer_db_URL,
+        process.env.streamer_dbkey_anon
+    );
+
+    const { items } = req.body;
     let logBuffer = [];
-    
-    // 로그 쌓는 함수
+
     const addLog = (msg) => {
-        console.log(msg); // 서버에도 남기고
-        logBuffer.push(msg); // 형님한테도 보냄
+        console.log(msg);
+        logBuffer.push(msg);
     };
 
     if (!items || items.length === 0) {
@@ -24,48 +22,61 @@ export default async function handler(req, res) {
     try {
         addLog(`=== 총 ${items.length}명 처리 시작 ===`);
 
-        const results = items.map((item) => {
+        // 2. [핵심] API 호출이 필요하므로 map 대신 Promise.all 사용
+        // 저장 직전에 각 플랫폼 API를 찔러서 최신 이미지를 가져옵니다.
+        const results = await Promise.all(items.map(async (item) => {
             const platform = item.platform ? item.platform.trim().toLowerCase() : '';
             const id = item.id ? item.id.trim() : '';
-
-            // 1. URL 강제 생성
-            const safeId = id || 'unknown';
-            const firstTwo = safeId.length >= 2 ? safeId.substring(0, 2) : 'xx';
-            const forcedSoopImg = `https://stimg.sooplive.co.kr/LOGO/${firstTwo}/${safeId}/m/${safeId}.webp`;
-
-            // 2. SOOP 여부 확인
             const isSoop = platform.includes('soop') || platform.includes('afreeca');
 
-            // 3. 로그 기록 (여기가 화면에 뜹니다)
             addLog(`--------------------------------------------------`);
-            addLog(`[ID: ${id}] 플랫폼: ${platform}`);
-            
-            let finalProfileImg = "에러";
+            addLog(`[ID: ${id}] 처리 중...`);
 
+            let finalProfileImg = item.profile_img || null; // 기본값
+
+            // ✅ [형님 의도 반영] 여기서 직접 SOOP API를 호출해서 이미지를 따옵니다.
             if (isSoop) {
-                finalProfileImg = forcedSoopImg;
-                addLog(`✅ SOOP 감지됨 -> 강제 주소 적용`);
-                addLog(`🔗 주소: ${forcedSoopImg}`);
-            } else {
-                finalProfileImg = item.profile_img || null;
-                addLog(`☑️ SOOP 아님 -> 기존 데이터 사용`);
+                try {
+                    const resp = await fetch(`https://bjapi.afreecatv.com/api/${id}/station`, {
+                        headers: { 'User-Agent': 'Mozilla/5.0' }
+                    });
+                    const json = await resp.json();
+
+                    if (json.station && json.station.station_logo) {
+                        let rawImg = json.station.station_logo;
+                        // 숲은 주소를 '//stimg...' 이렇게 줘서 https: 붙여야 합니다.
+                        if (rawImg.startsWith('//')) rawImg = 'https:' + rawImg;
+                        
+                        finalProfileImg = rawImg;
+                        addLog(`📸 SOOP 이미지 확보 완료`);
+                    } else {
+                        addLog(`⚠️ SOOP API 응답에 이미지가 없습니다.`);
+                    }
+                } catch (err) {
+                    addLog(`❌ SOOP 이미지 조회 실패: ${err.message}`);
+                }
+            } 
+            // 치지직이나 다른 플랫폼도 필요하면 여기에 else if 추가하면 됩니다.
+            else {
+                addLog(`☑️ SOOP 아님 -> 기존 데이터 유지`);
             }
 
+            // DB에 넣을 데이터 포장
             return {
                 id: id,
                 platform: item.platform,
-                group_name: item.group_name, 
+                group_name: item.group_name,
                 nickname: item.nickname,
                 is_active: true,
                 last_updated_at: new Date(),
-                profile_img: finalProfileImg,
-                total_broadcast_time: item.total_broadcast_time || null 
+                profile_img: finalProfileImg, // 방금 따온 따끈따끈한 이미지
+                total_broadcast_time: item.total_broadcast_time || null
             };
-        });
+        }));
 
-        // 4. DB 저장
+        // 3. DB에 진짜 저장 (Upsert)
         addLog(`=== DB 저장 시도 (Upsert) ===`);
-        
+
         const { data, error } = await supabase
             .from('streamers')
             .upsert(results, { onConflict: 'id' })
@@ -76,13 +87,8 @@ export default async function handler(req, res) {
             throw error;
         } else {
             addLog(`🎉 DB 저장 성공! (총 ${data.length}건)`);
-            // 첫 번째 데이터 샘플 확인
-            if (data.length > 0) {
-                addLog(`[샘플 확인] 첫번째 유저(${data[0].id}) 이미지: ${data[0].profile_img}`);
-            }
         }
 
-        // [최종 응답] logs 배열을 함께 보냅니다.
         res.status(200).json({ success: true, logs: logBuffer });
 
     } catch (e) {
