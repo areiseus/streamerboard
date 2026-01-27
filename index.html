@@ -516,12 +516,14 @@
         });
         
         try {
-            // 로컬 중계 서버 호출
-            const res = await fetch('https://effective-space-rotary-phone-6565j7wpr942r9-3000.app.github.dev//live', {
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify({items: targets})
+            
+            const res = await fetch('/api/soop_data_repeater', { 
+                     method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({items: targets})
             });
+
+            
             const results = await res.json();
             
             results.forEach(r => {
