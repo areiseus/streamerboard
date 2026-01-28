@@ -31,8 +31,11 @@ export default async function handler(req, res) {
 
                 try{
                     // 라이브 상세 정보
+                    //const liveDetail = await client.live.livedetail.channel(item.id);
                     const liveDetail = await client.live.livedetail(item.id);
-                    isLive = livedetail?.channel?.result === 1 ;
+                    // isLive = livedetail?.channel?.result === 1 ;
+                    isLive =  Boolean(livedetail?.channel?.stno);
+                    
                 } catch (e) {
                     console.error(`SOOP Error (${item.id}):`, e.message);
                 }
