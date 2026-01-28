@@ -30,7 +30,7 @@ export default async function handler(req, res) {
                     const isLive = liveDetail && liveDetail.RESULT ? true : false;
 
                     // broad_no가 존재하면 방송 중으로 판단
-                    const livetag = await client.liveDetail.CHANNEL(item.id);
+                    const livetag = await client.CHANNEL(item.id);
                     const Liveon = livetag.RESULT === 1;
                     
                     // 방송국 정보 (애청자, 구독자)
