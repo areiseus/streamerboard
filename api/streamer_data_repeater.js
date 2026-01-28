@@ -31,14 +31,17 @@ export default async function handler(req, res) {
 
                 try{
                     // 라이브 상세 정보
-                    //const liveDetail = await client.live.livedetail.channel(item.id);
+                    const liveDetail = await client.live.livedetail.channel(item.id);
                     //const liveDetail = await client.live.livedetail(item.id);
-                    const liveDetail = await client.live.detail(item.id);
-                    //isLive = liveDetail?.channel?.result === 1 ;
-                    isLive = liveDetail?.result === 1 ;
-                    //isLive =  Boolean(liveDetail?.channel?.stno);
-                    //isLive =  Boolean(liveDetail?.bno);
+                    //const liveDetail = await client.live.detail(item.id);
                     
+                    if (liveDetail) {
+                    isLive = liveDetail.channel.result === 1 ;
+                    //isLive = liveDetail.detail.result === 1 ;
+                    //isLive =  Boolean(liveDetail.channel?.stno);
+                    //isLive =  Boolean(liveDetail.bno);
+                    }
+                        
                 } catch (e) {
                     console.error(`SOOP Error (${item.id}):`, e.message);
                 }
