@@ -1,16 +1,16 @@
-/* js/main.js */
+/* js/dashboard_main.js */
 
 const COLS = 5; 
-const CARD_W = 260;    
+const CARD_W = 260;    // 수정: 카드 폭 260px
 const CARD_H = 210;    
-const GRID_W = 340;    
+const GRID_W = 340;    // 수정: 간격 확보 (260 + 80)
 const GRID_H = 260;    
 
+// 전역 색상 스케일 (그룹 점 색상 동기화용)
 const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
 
 async function init() {
     try {
-        // [최적화] 데이터 로딩
         const res = await fetch('/api/get_list');
         const data = await res.json();
         
@@ -28,13 +28,13 @@ async function init() {
             else noGroupNodes.push(m);
         });
 
-        // [최적화] DOM 렌더링을 먼저 수행하여 화면을 띄움
+        // [최적화] 화면 먼저 렌더링
         renderFooter(noGroupNodes);
         if (groupedNodes.length > 0) {
             runLogic(groupedNodes);
         }
 
-        // [최적화] 화면이 뜬 후, 라이브 상태를 비동기로 체크 (느린 작업)
+        // [최적화] API 호출 비동기 실행 (라이브/구독자 체크)
         checkLiveReal(data);
 
     } catch (e) { console.error("Init Error:", e); }
@@ -253,7 +253,7 @@ function getCardHTML(d) {
 function renderCards(posMap, allMembers) {
     const overlay = document.getElementById('card-overlay');
     overlay.innerHTML = ''; 
-    const fragment = document.createDocumentFragment(); // [최적화] 프래그먼트 사용
+    const fragment = document.createDocumentFragment(); // [최적화] DOM 접근 최소화
 
     posMap.forEach((pos, id) => {
         const member = allMembers.find(m => m.id === id);
@@ -273,7 +273,7 @@ function renderCards(posMap, allMembers) {
         card.onclick = (e) => { if(e.target.tagName !== 'BUTTON') openLink(member); };
         fragment.appendChild(card);
     });
-    overlay.appendChild(fragment); // DOM 접근 1회로 감소
+    overlay.appendChild(fragment); 
 }
 
 function renderBalloons(chain, posMap) {
@@ -345,7 +345,7 @@ function renderFooter(list) {
     if(list.length === 0) { area.style.display = 'none'; return; }
     area.style.display = 'block';
     
-    const fragment = document.createDocumentFragment(); // [최적화]
+    const fragment = document.createDocumentFragment();
     list.forEach(d => {
         const card = document.createElement('div');
         const isChzzk = !(d.platform === 'soop' || d.platform === 'afreeca');
@@ -400,10 +400,10 @@ async function checkLiveReal(data) {
                 
                 if(subRow) {
                     if(subCount > 0) {
-                        subRow.style.display = 'flex';
+                        subRow.style.display = 'flex'; // 구독자 있으면 표시
                         if(subEl) subEl.innerText = Number(subCount).toLocaleString();
                     } else {
-                        subRow.style.display = 'none';
+                        subRow.style.display = 'none'; // 없으면 숨김
                     }
                 }
 
@@ -427,5 +427,4 @@ async function checkLiveReal(data) {
     } catch(e) { console.error('API Error:', e); }
 }
 
-// init은 HTML에서 호출되지 않으므로 여기서 실행
 init();
