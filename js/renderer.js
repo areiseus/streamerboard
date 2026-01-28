@@ -35,6 +35,9 @@ export function renderCards(posMap, allMembers) {
 }
 
 // 배경 풍선(그룹 선)을 그림
+/* js/renderer.js */
+// (나머지 코드는 동일, renderBalloons 부분만 확인)
+
 export function renderBalloons(chain, posMap) {
     const svg = d3.select("#svg-layer");
     svg.selectAll("*").remove(); 
@@ -46,13 +49,16 @@ export function renderBalloons(chain, posMap) {
         let points = [];
         let memberCount = 0;
         
-        // chain 데이터 구조 호환성 처리
+        // chain에 저장된 members 목록을 순회
+        // (주의: 여기 members는 캐시 저장 시점의 데이터일 수 있음. 
+        //  하지만 우리는 ID만 보고 posMap에서 좌표를 찾으므로 상관없음!)
         const membersList = Array.isArray(g.members) ? g.members : [];
         
         membersList.forEach(m => {
             if(iterableMap.has(m.id)) {
                 const pos = iterableMap.get(m.id);
                 const padding = 10; 
+                // ... 좌표 계산 로직 동일 ...
                 const x = pos.finalX; 
                 const y = pos.finalY;
                 const w = CARD_W; 
@@ -64,23 +70,25 @@ export function renderBalloons(chain, posMap) {
                 memberCount++;
             }
         });
+        
+        // ... 폴리곤 그리기 로직 동일 ...
         if(memberCount === 0) return;
-
         const hull = d3.polygonHull(points);
         if(hull) {
-            const color = colorScale(g.name);
-            const line = d3.line().curve(d3.curveLinearClosed); 
-            svg.append("path").attr("d", line(hull)).attr("class", "group-hull")
-               .attr("fill", color).attr("stroke", color).attr("stroke-width", 20).attr("stroke-linejoin", "round"); 
-            
-            const topY = d3.min(hull, d=>d[1]);
-            const centerX = d3.mean(hull, d=>d[0]);
-            const labelY = topY - 20; 
-            svg.append("text").attr("class", "group-label").attr("x", centerX).attr("y", labelY)
-               .style("fill", color).text(g.name);
+             const color = colorScale(g.name);
+             const line = d3.line().curve(d3.curveLinearClosed); 
+             svg.append("path").attr("d", line(hull)).attr("class", "group-hull")
+                .attr("fill", color).attr("stroke", color).attr("stroke-width", 20).attr("stroke-linejoin", "round"); 
+             
+             const topY = d3.min(hull, d=>d[1]);
+             const centerX = d3.mean(hull, d=>d[0]);
+             const labelY = topY - 20; 
+             svg.append("text").attr("class", "group-label").attr("x", centerX).attr("y", labelY)
+                .style("fill", color).text(g.name);
         }
     });
 }
+// ... 나머지 함수 동일 ...
 
 // 하단 푸터(미분류) 그림
 export function renderFooter(list) {
