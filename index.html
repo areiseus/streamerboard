@@ -6,37 +6,33 @@
     <title>유앤아이매방랑 Final Dashboard</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
-        /* [기본 설정] */
+        /* [기본 설정 - 건드리지 않음] */
         body { margin: 0; background: #f0f2f5; font-family: 'Pretendard', sans-serif; overflow-x: hidden; height: 100vh; color: #333; }
         .container { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; }
-
         .admin-link { position: fixed; top: 20px; right: 20px; font-size: 1.5rem; text-decoration: none; opacity: 0.5; z-index: 2000; }
 
-        /* [헤더] */
+        /* [헤더 - 건드리지 않음] */
         header { flex: 0 0 auto; width: 100%; background: #fff; padding: 15px 0; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); z-index: 100; border-bottom: 1px solid #eee; }
         h1 { margin: 0 0 5px 0; font-size: 1.8rem; font-weight: 900; color: #333; letter-spacing: -1px; }
         .refresh-btn { background: #333; color: #fff; border: 1px solid #444; padding: 6px 15px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; cursor: pointer; }
         .refresh-btn:hover { background: #555; }
 
-        /* [메인 영역] */
+        /* [메인 영역 - 건드리지 않음] */
         #main-area {
             flex: 1; width: 100%; position: relative; overflow: auto; 
             background: radial-gradient(circle at 50% 50%, #ffffff 0%, #e9ecef 100%);
             display: flex; justify-content: center; 
             padding: 60px;
         }
-
-        /* [컨텐츠 래퍼] */
         #content-wrapper {
             position: relative;
             width: 1600px; 
             min-height: 800px;
         }
-
         svg { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none; overflow: visible; }
         #card-overlay { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 2; }
 
-        /* [하단 영역] */
+        /* [하단 영역 - 건드리지 않음] */
         #footer-area {
             flex: 0 0 auto; width: 90%; max-width: 1200px; background: #fff;
             border-top: 1px solid #ddd; padding: 20px; margin-bottom: 20px; border-radius: 10px;
@@ -45,76 +41,121 @@
         .footer-header { font-weight: bold; color: #555; margin-bottom: 10px; border-bottom: 2px solid #eee; padding-bottom: 5px; text-align: center; }
         .no-group-grid { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; }
 
-        /* [CARD UI] */
+        /* ==========================================================================
+           [수정된 디자인 적용 구간] : 요청하신 8가지 디자인 반영
+           ========================================================================== */
         .card {
             position: absolute; 
-            width: 220px; height: 190px;
-            background: #fff; border-radius: 12px; 
-            border: 3px solid #ddd; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            /* 1. 박스 크기 확대 및 패딩 여유 있게 */
+            width: 380px; height: 210px;
+            background: #fff; border-radius: 20px; 
+            border: 1px solid #ddd; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
             display: flex; flex-direction: row; 
-            padding: 12px; box-sizing: border-box;
+            padding: 25px; box-sizing: border-box;
+            gap: 20px; /* 좌우 섹션 간격 */
             cursor: pointer; transition: transform 0.2s, top 0.5s, left 0.5s;
             z-index: 10; overflow: hidden;
         }
         .card:hover { transform: scale(1.05); z-index: 999; box-shadow: 0 8px 25px rgba(0,0,0,0.15); border-color: #bbb; }
         
+        /* 왼쪽 섹션: 플랫폼로고 -> 이미지 -> 배지 -> 닉네임 -> ID */
         .card-left {
-            flex: 0 0 95px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-            border-right: 1px dashed #eee; padding-right: 8px; margin-right: 8px;
+            flex: 0 0 100px; 
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+            /* 기존 오른쪽 구분선 제거 */
+            border-right: none; padding-right: 0; margin-right: 0;
         }
-        .pf-text { font-size: 0.7rem; font-style: italic; color: #888; margin-bottom: 4px; font-weight: bold;}
+
+        /* 8. 플랫폼 로고 이미지 스타일 */
+        .platform-logo {
+            height: 16px; 
+            object-fit: contain;
+            margin-bottom: 8px; /* 프로필 이미지와 간격 */
+        }
         
-        .img-wrap { position: relative; width: 65px; height: 65px; margin-bottom: 8px; }
+        .img-wrap { 
+            position: relative; 
+            width: 90px; height: 90px; 
+            display: flex; flex-direction: column; align-items: center;
+        }
+        /* 프로필 이미지 */
         .profile-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid #f0f0f0; transition: border-color 0.3s; }
         
+        /* 2. ON/OFF 배지를 이미지 아래로 이동 (relative/absolute 제거 후 flow 배치) */
         .status-badge {
-            position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%);
-            font-size: 0.65rem; font-weight: 800;
-            padding: 2px 8px; border-radius: 10px; 
-            color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            margin-top: 8px; /* 이미지와 간격 */
+            font-size: 0.7rem; font-weight: 800;
+            padding: 4px 10px; border-radius: 12px; 
+            color: #fff; box-shadow: none;
             white-space: nowrap;
         }
         .badge-live { background: #ff4757; }
         .badge-off { background: #adb5bd; }
 
+        /* 3. 닉네임/아이디 레이어 고정 및 잘림 방지 */
+        .user-info-box {
+            width: 100%;
+            text-align: center;
+            margin-top: 4px;
+        }
         .nick { 
-            font-size: 0.9rem; font-weight: 800; color: #333; 
-            text-align: center; line-height: 1.2;
-            word-break: keep-all; 
-            overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-            margin-bottom: 4px; height: 2.4em;
+            font-size: 1.1rem; font-weight: 800; color: #333; 
+            line-height: 1.2;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            margin-bottom: 2px;
         }
-        .id-text { font-size: 0.65rem; color: #999; margin-bottom: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        .id-text { 
+            font-size: 0.75rem; color: #999; 
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+            display: block;
+        }
         
-        .fan-cnt { font-size: 0.7rem; color: #555; font-weight: bold; margin-top: 5px; text-align: center; width: 100%; }
+        /* 오른쪽 섹션: 그룹 리스트(상단), 통계(하단) */
+        .card-right { 
+            flex: 1; 
+            display: flex; flex-direction: column; 
+            justify-content: space-between; 
+            padding-bottom: 0;
+            min-width: 0; 
+        }
 
-        .card-right { flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding-bottom: 2px;}
         .group-list {
-            flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px;
-            scrollbar-width: thin;
+            display: flex; flex-direction: column; gap: 6px;
+            overflow-y: auto; max-height: 120px;
         }
-        .group-list::-webkit-scrollbar { width: 3px; }
-        .group-list::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+        /* 6. 그룹 앞 색상 점 표기 & 7. 텍스트 좌측 정렬 */
         .group-item {
-            font-size: 0.7rem; background: #f1f3f5; color: #495057; 
-            padding: 4px 6px; border-radius: 4px; text-align: center; font-weight: 700;
-            display: flex; align-items: center; justify-content: center; gap: 4px;
+            font-size: 0.85rem; background: #f8f9fa; color: #495057; 
+            padding: 8px 10px; border-radius: 8px; font-weight: 700;
+            display: flex; align-items: center; justify-content: flex-start; /* 좌측 정렬 */
+            gap: 8px;
+        }
+        .group-dot {
+            width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+            background-color: #333; /* 기본 점 색상 */
         }
         
-        .btn-row { display: flex; gap: 5px; margin-top: auto; }
-        .action-btn {
-            flex: 1; border: 1px solid #ddd; background: #fff; color: #555;
-            font-size: 0.75rem; padding: 6px 0; border-radius: 6px; cursor: pointer; transition: 0.2s; font-weight: bold;
+        /* 4. 버튼 삭제됨 & 5. 통계 이동 (우측 하단 정렬) */
+        .stats-container {
+            margin-top: auto;
+            display: flex; flex-direction: column; 
+            align-items: flex-end; /* 우측 정렬 */
+            gap: 2px;
         }
-        .action-btn:hover { background: #f8f9fa; border-color: #ccc; }
+        .stat-row {
+            font-size: 0.9rem; color: #444; font-weight: 700;
+        }
+        .stat-label {
+            font-weight: normal; color: #888; font-size: 0.8rem; margin-right: 4px;
+        }
 
         .card.is-live { border-color: #ff4757; background: #fffbfb; }
         .card.is-live .profile-img { border-color: #ff4757; animation: pulse 2s infinite; }
         
         .no-group-grid .card { position: relative; left: auto !important; top: auto !important; }
 
-        /* [풍선 스타일] 둥근 직사각형(LinearClosed) */
+        /* [풍선 스타일 - 건드리지 않음] */
         .group-hull { 
             fill-opacity: 0.08; 
             stroke-linejoin: round; 
@@ -122,7 +163,6 @@
             mix-blend-mode: multiply; 
             transition: d 0.5s; 
         }
-        /* [라벨 스타일] */
         .group-label { 
             font-size: 16px; font-weight: 900; 
             text-anchor: middle; 
@@ -156,11 +196,12 @@
 </div>
 
 <script>
-    const COLS = 5;
-    const CARD_W = 220;
-    const CARD_H = 190;
-    const GRID_W = 320; 
-    const GRID_H = 280; 
+    /* [설정 변경] 카드가 커졌으므로(380px) 그리드 간격과 열 개수를 조정해야 배치가 안 깨집니다. */
+    const COLS = 4;        // 기존 5 -> 4 (카드 넓이 고려)
+    const CARD_W = 380;    // 디자인 요청: 너비 확대
+    const CARD_H = 210;    // 디자인 요청: 높이 약간 확대
+    const GRID_W = 410;    // 카드 간격 (CARD_W + 여백)
+    const GRID_H = 260;    // 세로 간격
 
     async function init() {
         try {
@@ -185,13 +226,12 @@
             if (groupedNodes.length > 0) {
                 runLogic(groupedNodes);
             }
-
-            // [변경] 실제 서버 API 연동 함수 실행
             checkLiveReal(data);
 
         } catch (e) { console.error(e); }
     }
 
+    /* [로직 함수들 - 변경 없음] */
     function runLogic(members) {
         const groupMap = {};
         members.forEach(m => {
@@ -353,37 +393,54 @@
         return maxOverlap > 0 ? best : null;
     }
 
-    // [UI] 치지직 버그 수정: ID만 숨기고 버튼/그룹명은 표시
+    // =========================================================
+    // [UI 수정됨] getCardHTML: 디자인 요청사항 1~8 반영
+    // =========================================================
     function getCardHTML(d) {
         const pf = d.platform || 'soop';
         const isSoop = (pf === 'soop' || pf === 'afreeca');
-        const platformName = isSoop ? 'SOOP' : 'CHZZK';
-        // ID만 숨김
+        
+        // 8. 실제 로고 이미지 URL 적용 (위키미디어 CDN)
+        const logoUrl = isSoop 
+            ? "https://upload.wikimedia.org/wikipedia/commons/a/a8/Soop_logo.svg" 
+            : "https://upload.wikimedia.org/wikipedia/commons/6/6e/Chzzk_logo.svg";
+        
         const idDisplay = (!isSoop) ? 'display:none;' : '';
 
+        // 6 & 7. 그룹 리스트: 색상 점 표기 + 좌측 정렬 (CSS .group-item)
+        // 색상은 임시로 회색(#333) 처리. 특정 색상 원하면 style에서 .group-dot background 변경 필요
         let groupListHTML = '';
         if(d._groups && d._groups.length > 0) {
             d._groups.forEach(g => {
-                groupListHTML += `<div class="group-item"><span style="color:#00b894">●</span> ${g}</div>`;
+                groupListHTML += `<div class="group-item"><span class="group-dot"></span><span class="g-name">${g}</span></div>`;
             });
         }
 
         return `
             <div class="card-left">
-                <div class="pf-text">${platformName}</div>
+                <img src="${logoUrl}" class="platform-logo" alt="${pf}">
+                
                 <div class="img-wrap">
-                    <img src="${d.profile_img || 'https://via.placeholder.com/60'}" class="profile-img">
-                    <div class="status-badge badge-off">OFF</div>
+                    <img src="${d.profile_img || 'https://via.placeholder.com/100'}" class="profile-img">
                 </div>
-                <div class="nick">${d.nickname}</div>
-                <div class="id-text" style="${idDisplay}">@${d.id}</div>
-                <div class="fan-cnt">애청자: -</div>
+                <div class="status-badge badge-off">OFF</div>
+
+                <div class="user-info-box">
+                    <div class="nick">${d.nickname}</div>
+                    <div class="id-text" style="${idDisplay}">@${d.id}</div>
+                </div>
             </div>
+
             <div class="card-right">
                 <div class="group-list">${groupListHTML}</div>
-                <div class="btn-row">
-                    <button class="action-btn">방송국</button>
-                    <button class="action-btn">카페</button>
+                
+                <div class="stats-container">
+                    <div class="stat-row">
+                        <span class="stat-label">구독자</span> <span class="sub-cnt">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">애청자</span> <span class="fan-cnt">0</span>
+                    </div>
                 </div>
             </div>
         `;
@@ -406,7 +463,7 @@
         });
     }
 
-    // [선 그리기: 원복 + 회피 + 라벨 수정]
+    // [선 그리기 - 위치값 조정만 함 (카드가 커져서)]
     function renderBalloons(chain, posMap) {
         const svg = d3.select("#svg-layer");
         svg.selectAll("*").remove(); 
@@ -422,18 +479,17 @@
             g.members.forEach(m => {
                 if(posMap.has(m.id)) {
                     const pos = posMap.get(m.id);
-                    // [회피 로직] 패딩 타이트하게 (4px)
-                    const padding = 4; 
+                    // 카드가 커졌으니 여유 공간(padding)도 살짝 조정
+                    const padding = 8; 
                     const x = pos.finalX; 
                     const y = pos.finalY;
                     const w = CARD_W; 
                     const h = CARD_H;
 
-                    // 모서리 점 추가 (관통 방지)
                     points.push([x - padding, y - padding]);       
-                    points.push([x + w + padding, y - padding]);   
+                    points.push([x + w + padding, y - padding]);    
                     points.push([x + w + padding, y + h + padding]); 
-                    points.push([x - padding, y + h + padding]);   
+                    points.push([x - padding, y + h + padding]);    
                     memberCount++;
                 }
             });
@@ -443,7 +499,6 @@
             const hull = d3.polygonHull(points);
             if(hull) {
                 const color = colorScale(g.name);
-                // [원복] LinearClosed
                 const line = d3.line().curve(d3.curveLinearClosed); 
 
                 svg.append("path")
@@ -456,18 +511,17 @@
 
                 const topY = d3.min(hull, d=>d[1]);
                 let centerX = d3.mean(hull, d=>d[0]);
-                let labelY = topY - 15; 
+                let labelY = topY - 20; 
 
-                // 라벨 충돌 방지
                 let overlap = false;
                 for(let lp of labelPositions) {
-                    if(Math.abs(lp.x - centerX) < 120 && Math.abs(lp.y - labelY) < 40) {
+                    if(Math.abs(lp.x - centerX) < 150 && Math.abs(lp.y - labelY) < 50) {
                         overlap = true;
                         break;
                     }
                 }
                 if(overlap) {
-                    labelY = d3.max(hull, d=>d[1]) + 35;
+                    labelY = d3.max(hull, d=>d[1]) + 40;
                 }
                 labelPositions.push({x: centerX, y: labelY});
 
@@ -475,7 +529,7 @@
                     .attr("class", "group-label")
                     .attr("x", centerX)
                     .attr("y", labelY)
-                    .style("fill", color) // 글자색 동기화
+                    .style("fill", color)
                     .text(g.name);
             }
         });
@@ -507,7 +561,7 @@
         return Array.from(set);
     }
 
-    // [데이터 연동] 중계 서버(API/soop_data_repeater.js) 호출
+    // [데이터 연동 - 변경 없음]
     async function checkLiveReal(data) {
         const uniqueIds = [...new Set(data.map(m=>m.id))];
         const targets = uniqueIds.map(id => {
@@ -516,14 +570,12 @@
         });
         
         try {
-            
             const res = await fetch('/api/soop_data_repeater', { 
                      method: 'POST', 
                     headers: {'Content-Type': 'application/json'}, 
                     body: JSON.stringify({items: targets})
             });
 
-            
             const results = await res.json();
             
             results.forEach(r => {
@@ -532,16 +584,12 @@
                     const badge = c.querySelector('.status-badge');
                     const fanEl = c.querySelector('.fan-cnt');
                     
-                    // [수정] 애청자 수 업데이트 로직
-                    // r.fans가 undefined거나 null이면 0으로 처리
                     const fanCount = (r.fans !== undefined && r.fans !== null) ? r.fans : 0;
                     
                     if(fanEl) {
-                        // 0명이어도 숫자 '0'으로 표기 (하이픈(-) 제거)
-                        fanEl.innerText = `애청자: ${Number(fanCount).toLocaleString()}`;
+                        fanEl.innerText = Number(fanCount).toLocaleString();
                     }
 
-                    // 라이브 배지 업데이트
                     if(r.isLive) {
                         c.classList.add('is-live');
                         if(badge) {
@@ -561,7 +609,6 @@
             });
         } catch(e) { 
             console.error('API Error:', e); 
-            // 에러 발생 시에도 '-'가 아닌 0으로 초기화하고 싶다면 아래 코드 추가 가능
         }
     }
     
