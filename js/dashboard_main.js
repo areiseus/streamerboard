@@ -109,6 +109,7 @@ function runLogic(members) {
         });
     }
 
+    // (위쪽으로 확장)
     for(let i = idxA - 1; i >= 0; i--) {
         const g = chain[i];
         g.members.sort((a, b) => sortMembers(a, b, memberPositions));
@@ -125,6 +126,7 @@ function runLogic(members) {
         }
     }
 
+    // (아래쪽으로 확장)
     for(let i = idxA + 1; i < chain.length; i++) {
         const g = chain[i];
         g.members.sort((a, b) => sortMembers(a, b, memberPositions));
@@ -141,15 +143,20 @@ function runLogic(members) {
         }
     }
 
+    // [레이아웃 계산]
     let minRow = Infinity, maxRow = -Infinity;
     memberPositions.forEach(pos => {
         if(pos.relRow < minRow) minRow = pos.relRow;
         if(pos.relRow > maxRow) maxRow = pos.relRow;
     });
+
+    // 각 행에 몇 개가 있는지 카운트 (최대 너비 계산용)
     const rowCounts = {};
+    let maxColsUsed = 0; // [NEW] 실제 사용된 최대 열 개수
     memberPositions.forEach(pos => {
         if(!rowCounts[pos.relRow]) rowCounts[pos.relRow]=0;
         rowCounts[pos.relRow]++;
+        if(rowCounts[pos.relRow] > maxColsUsed) maxColsUsed = rowCounts[pos.relRow];
     });
 
     const rowShift = -minRow;
@@ -158,17 +165,21 @@ function runLogic(members) {
     const containerH = Math.max(800, totalRows * GRID_H + 300);
     wrapper.style.height = containerH + "px";
     
-    // [수정] wrapper width를 내용물에 딱 맞게 설정 (정렬을 위해)
-    wrapper.style.width = (COLS * GRID_W + 50) + "px"; 
+    // [핵심 수정] 실제 사용된 열 개수만큼만 너비를 잡음 -> 여백 최소화
+    // COLS(5) 대신 maxColsUsed를 사용
+    const visualCols = Math.max(maxColsUsed, 1); 
+    const totalVisualWidth = visualCols * GRID_W; 
+    wrapper.style.width = (totalVisualWidth + 50) + "px"; 
 
     const contentHeight = totalRows * GRID_H;
     const startY = (containerH - contentHeight) / 2;
 
+    // 카드 배치
     memberPositions.forEach(pos => {
         const countInRow = rowCounts[pos.relRow];
         const rowWidth = countInRow * GRID_W;
-        const totalWidth = COLS * GRID_W;
-        const startX = (totalWidth - rowWidth) / 2;
+        // 중앙 정렬 기준점도 '시각적 최대 너비'를 기준으로 잡음
+        const startX = (totalVisualWidth - rowWidth) / 2;
         const cellOffsetX = (GRID_W - CARD_W) / 2;
         
         pos.finalX = startX + pos.col * GRID_W + cellOffsetX;
@@ -258,6 +269,7 @@ function renderCards(posMap, allMembers) {
         if(!member) return;
         const card = document.createElement('div');
         
+        // 초기 테마 설정
         const isChzzk = !(member.platform === 'soop' || member.platform === 'afreeca');
         card.className = isChzzk ? 'card chzzk-theme' : 'card';
         
@@ -367,7 +379,6 @@ function parseGroups(m) {
     return Array.from(set);
 }
 
-// [수정된 라이브 체크 로직]
 async function checkLiveReal(data) {
     const uniqueIds = [...new Set(data.map(m=>m.id))];
     const targets = uniqueIds.map(id => {
@@ -385,7 +396,7 @@ async function checkLiveReal(data) {
         const results = await res.json();
         
         results.forEach(r => {
-            // ID 매칭 시 공백 제거 등 안전장치 추가
+            // ID 공백 제거 후 매칭
             const safeId = r.id.trim();
             const cards = document.querySelectorAll(`.card[data-id="${safeId}"]`);
             
@@ -409,12 +420,11 @@ async function checkLiveReal(data) {
                     }
                 }
 
-                // [Live Status 강력 적용]
+                // [ON/OFF 로직 수정] 확실하게 클래스 교체
                 if(r.isLive) {
                     c.classList.add('is-live');
                     if(badge) {
                         badge.innerText = "LIVE";
-                        // 클래스 충돌 방지를 위해 확실하게 제거 후 추가
                         badge.classList.remove('badge-off');
                         badge.classList.add('badge-live');
                     }
