@@ -26,12 +26,12 @@ export default async function handler(req, res) {
             if (item.platform === 'soop') {
                 try {
                     // 라이브 상세 정보
-                    const liveDetail = await client.live.detail(item.id);
-                    const isLive = liveDetail && liveDetail.RESULT ? true : false;
+                    const liveDetail1 = await client.live.detail(item.id);
+                    const isLive = liveDetail1 && liveDetail1.RESULT ? true : false;
 
                     // 라이브 정보 테스트용
-                    //const livetag = await client.livedetail.channel(item.id);
-                    //const liveon = (livetag.RESULT === 1) ? 1 : 0;
+                    const livetag = await client.livedetail.channel(item.id);
+                    const liveon = (livetag.RESULT === 1) ? 1 : 0;
                     //const liveon = 1;
                     
                     
@@ -82,14 +82,14 @@ export default async function handler(req, res) {
                     results.push({
                         id: item.id,
                         platform: 'chzzk',
-                        isLive: isLive,
+                        liveon: isLive,
                         fans: parseInt(fans),
                         subscribers: parseInt(subscribers)
                     });
 
                 } catch (e) {
                     console.error(`Chzzk Error (${item.id}):`, e.message);
-                    results.push({ id: item.id, platform: item.platform, isLive: false, viewers: 0, fans: 0, subscribers: 0 });
+                    results.push({ id: item.id, platform: item.platform, isLive: false, viewers: 0, fans: 0, subscribers: 0, liveon: 0  });
                 }
             }
         }));
