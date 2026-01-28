@@ -11,28 +11,28 @@ h1 { margin: 0 0 5px 0; font-size: 1.8rem; font-weight: 900; color: #333; letter
 .refresh-btn { background: #333; color: #fff; border: 1px solid #444; padding: 6px 15px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; cursor: pointer; }
 .refresh-btn:hover { background: #555; }
 
-/* [메인 영역 - 정렬 문제 수정됨] */
+/* [메인 영역 - 정렬 수정] */
 #main-area {
     flex: 1; 
     width: 100%; 
     position: relative; 
-    overflow: auto; /* 스크롤 허용 */
+    overflow: auto; 
     background: radial-gradient(circle at 50% 50%, #ffffff 0%, #e9ecef 100%);
     
-    /* Flex 제거 -> Block 레이아웃 사용 (잘림 방지) */
+    /* 중앙 정렬을 위한 Block 설정 */
     display: block; 
-    text-align: center; /* 내부 요소 중앙 정렬 */
-    padding: 60px 0; /* 상하 패딩만 줌 */
+    text-align: center; /* 내부 inline-block 요소 중앙 정렬 */
+    padding: 40px 0;    /* 상하 패딩 조정 */
 }
 
-/* [컨텐츠 래퍼 - 중앙 정렬 및 여백] */
+/* [컨텐츠 래퍼 - 불필요한 여백 제거] */
 #content-wrapper {
     position: relative;
-    /* JS에서 width가 설정되지만, 기본적으로 중앙 정렬 */
-    margin: 0 auto; 
-    display: inline-block; /* text-align: center의 영향을 받아 중앙에 위치 */
-    text-align: left; /* 내부 텍스트는 다시 왼쪽 정렬 */
-    min-height: 800px;
+    /* width: 1800px;  <-- 고정 너비 삭제 (JS가 동적으로 설정) */
+    min-height: 600px;
+    margin: 0 auto;    /* 블록 중앙 정렬 */
+    display: inline-block; /* 내용물 크기만큼만 차지하게 변경 */
+    text-align: left;  /* 내부는 다시 왼쪽 정렬 */
 }
 
 svg { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none; overflow: visible; }
@@ -74,10 +74,10 @@ svg { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1
 .profile-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid #f0f0f0; transition: border-color 0.3s; }
 .card.chzzk-theme .profile-img { border-color: #444; }
 
-/* ON/OFF 배지 */
+/* ON/OFF 배지 - 우선순위 강화 */
 .status-badge { margin-top: 8px; font-size: 0.7rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; color: #fff; box-shadow: none; white-space: nowrap; }
-.badge-live { background: #ff4757 !important; } /* 우선순위 높임 */
-.badge-off { background: #adb5bd !important; }
+.badge-live { background-color: #ff4757 !important; }
+.badge-off { background-color: #adb5bd !important; }
 
 .user-info-box { width: 100%; text-align: center; margin-top: 4px; }
 .nick { font-size: 1.0rem; font-weight: 800; color: #333; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
