@@ -7,7 +7,38 @@ export default async function handler(req, res) {
 
     if (req.method === 'OPTIONS') return res.status(200).end();
 
-    const SOOP_CLIENT_ID = 'ae1d3e4XXXXXXX'; // [필수] 실제 키값 입력
+    // --------------------------------------------------------------------------
+    // [핵심] 데이터 검증 규칙 (Strict Validators)
+    // --------------------------------------------------------------------------
+    const Validator = {
+        // [규칙 1] 애청자 수: "자연수" (1, 2, 3...)가 아니면 무조건 Fail
+        isValidFan: (val) => {
+            if (val === null || val === undefined || val === '') return false;
+            const num = Number(val);
+            if (isNaN(num)) return false;           // 숫자 아님
+            if (!Number.isInteger(num)) return false; // 정수 아님
+            if (num <= 0) return false;             // 0 이하 (자연수 아님)
+            return true;
+        },
+
+        // [규칙 2] 라이브 상태: boolean 또는 0/1 아니면 Fail
+        isValidLive: (val) => {
+            if (val === null || val === undefined) return false;
+            if (typeof val === 'boolean') return true;
+            if (val === 0 || val === 1) return true;
+            return false;
+        },
+
+        // [규칙 3] 시청자 수: 0 이상의 정수
+        isValidViewer: (val) => {
+            if (val === null || val === undefined || val === '') return false;
+            const num = Number(val);
+            if (isNaN(num)) return false;
+            if (!Number.isInteger(num)) return false;
+            if (num < 0) return false;
+            return true;
+        }
+    };
 
     try {
         const { items } = req.body || {};
@@ -18,196 +49,153 @@ export default async function handler(req, res) {
         await Promise.all(items.map(async (item) => {
             if (item.platform === 'soop') {
                 let resultData = {
-                    id: item.id,
-                    platform: 'soop',
-                    isLive: false,
-                    viewers: 0,
-                    fans: 0,
-                    subscribers: 0,
-                    title: '',
-                    thumbnail: '',
-                    profileUrl: '',
-                    _debug: [] 
+                    id: item.id, platform: 'soop',
+                    isLive: false, viewers: 0, fans: 0, subscribers: 0,
+                    title: '', thumbnail: '', profileUrl: '',
+                    _debug: []
                 };
 
-                let isValidDataFound = false; // [핵심] 유효 데이터 확보 여부 플래그
+                let isFanSuccess = false;
+                let isLiveSuccess = false;
 
-                // ----------------------------------------------------------------
-                // METHOD 1: 공식 API (검증 기준: broadcast_list 키 존재 여부)
-                // ----------------------------------------------------------------
+                // =================================================================
+                // STEP 1: 애청자 & 구독자 수집 (Station API)
+                // URL: https://st.sooplive.co.kr/api/get_station_status.php
+                // 특징: 키 값 불필요, 가장 정확한 팬 수 제공
+                // =================================================================
                 try {
-                    const listUrl = `https://openapi.sooplive.co.kr/broad/list?client_id=${SOOP_CLIENT_ID}&select_key=bj_id&select_value=${item.id}&page_no=1`;
-                    const listRes = await fetch(listUrl, { headers: { 'Accept': '*/*' } });
+                    const stUrl = `https://st.sooplive.co.kr/api/get_station_status.php`;
+                    const stParams = new URLSearchParams();
+                    stParams.append('szBjId', item.id);
                     
-                    if (listRes.ok) {
-                        const listData = await listRes.json();
+                    const stRes = await fetch(stUrl, { 
+                        method: 'POST', 
+                        headers: { 
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'User-Agent': 'Mozilla/5.0' 
+                        }, 
+                        body: stParams 
+                    });
+                    
+                    if (stRes.ok) {
+                        const stationInfo = await stRes.json();
                         
-                        // [검증] 응답에 'broadcast_list'라는 키가 있는가? (SOOP 공식 규격)
-                        if (listData && Array.isArray(listData.broadcast_list)) {
-                            // 데이터 구조가 정상이므로 '유효 데이터'로 인정
-                            isValidDataFound = true; 
-                            resultData._debug.push("M1:ValidStruct");
+                        // 팬 수 추출
+                        let rawFan = 0;
+                        if (stationInfo?.station?.upd?.fan_cnt) rawFan = stationInfo.station.upd.fan_cnt;
+                        else if (stationInfo?.total_bj_fan_cnt) rawFan = stationInfo.total_bj_fan_cnt;
 
-                            if (listData.broadcast_list.length > 0) {
-                                const broad = listData.broadcast_list[0];
-                                resultData.isLive = true;
-                                resultData.viewers = parseInt(broad.total_view_cnt || 0);
-                                resultData.title = broad.broad_title || "";
-                                resultData.thumbnail = broad.broad_thumb || "";
-                                if (broad.profile_img) {
-                                    resultData.profileUrl = broad.profile_img.startsWith('//') ? 'https:' + broad.profile_img : broad.profile_img;
-                                }
-                            }
+                        // [검증] 자연수인가?
+                        if (Validator.isValidFan(rawFan)) {
+                            resultData.fans = parseInt(rawFan);
+                            isFanSuccess = true;
+                            resultData._debug.push("Fan:API_OK");
+                        } else {
+                            resultData._debug.push(`Fan:Invalid(${rawFan})`);
                         }
-                    }
 
-                    // 팬 수 확인 (Station API)
-                    if (isValidDataFound) { // 리스트 조회가 성공했을 때만 시도
-                        try {
-                            const stationUrl = `https://openapi.sooplive.co.kr/user/stationinfo`;
-                            const params = new URLSearchParams();
-                            params.append('client_id', SOOP_CLIENT_ID);
-                            params.append('bj_id', item.id);
-                            
-                            const stationRes = await fetch(stationUrl, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': '*/*' },
-                                body: params
-                            });
-
-                            if (stationRes.ok) {
-                                const sData = await stationRes.json();
-                                // [검증] station 객체가 있는가?
-                                if (sData && (sData.station || sData.total_fan_cnt !== undefined)) {
-                                    const rawFan = (sData.station && sData.station.total_fan_cnt) 
-                                                || sData.total_fan_cnt 
-                                                || 0;
-                                    if(rawFan > 0) resultData.fans = parseInt(rawFan);
-                                }
-                            }
-                        } catch (e) {}
+                        // 구독자 수 추출 (옵션)
+                        if (stationInfo?.subscription) {
+                            let sub = stationInfo.subscription;
+                            if (sub.cnt) sub = sub.cnt;
+                            if (!isNaN(Number(sub))) resultData.subscribers = Number(sub);
+                        }
+                    } else {
+                        resultData._debug.push(`Fan:HTTP_${stRes.status}`);
                     }
                 } catch (e) {
-                    resultData._debug.push("M1:Err");
+                    resultData._debug.push("Fan:Err");
                 }
 
-                // ----------------------------------------------------------------
-                // METHOD 2: 비공식 API 1 (검증 기준: RESULT 코드 확인)
-                // ----------------------------------------------------------------
-                // 공식 API에서 구조적 검증에 실패했거나(키 문제), 데이터를 못 얻었을 때 실행
-                if (!isValidDataFound) {
-                    try {
-                        // 1. Live Detail (RESULT: 1 확인)
-                        const liveUrl = `https://live.sooplive.co.kr/afreeca/player_live_api.php`;
-                        const liveParams = new URLSearchParams();
-                        liveParams.append('bid', item.id);
-                        
-                        const liveRes = await fetch(liveUrl, { method: 'POST', body: liveParams });
-                        const liveDetail = await liveRes.json();
-
-                        // [검증] SOOP 비공식 API는 성공 시 RESULT: 1을 반환함
-                        if (liveDetail && liveDetail.RESULT === 1) {
-                            isValidDataFound = true; // 유효 데이터 확보!
-                            resultData._debug.push("M2:ValidResult");
-                            
-                            if (liveDetail.broad_no) {
-                                resultData.isLive = true;
-                                resultData.viewers = parseInt(liveDetail.view_cnt || 0);
-                                if(liveDetail.thumb) resultData.thumbnail = `https:${liveDetail.thumb}`;
-                            }
+                // =================================================================
+                // STEP 2: 라이브 상태 & 시청자 수집 (HTML 파싱)
+                // URL: https://ch.sooplive.co.kr/{id}
+                // 특징: 라이브 정보는 여기가 제일 확실함 (공식 API 못 쓸 때)
+                // =================================================================
+                try {
+                    const targetUrl = `https://ch.sooplive.co.kr/${item.id}`;
+                    const webRes = await fetch(targetUrl, {
+                        headers: { 
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', 
+                            'Accept': 'text/html' 
                         }
+                    });
 
-                        // 2. Station Info (station 객체 확인)
-                        const stUrl = `https://st.sooplive.co.kr/api/get_station_status.php`;
-                        const stParams = new URLSearchParams();
-                        stParams.append('szBjId', item.id);
-                        
-                        const stRes = await fetch(stUrl, { method: 'POST', body: stParams });
-                        const stationInfo = await stRes.json();
+                    if (webRes.ok) {
+                        const html = await webRes.text();
 
-                        // [검증] 응답에 'station' 객체가 있는가?
-                        if (stationInfo && stationInfo.station) {
-                            // 여기서도 유효성 인정 가능
-                            isValidDataFound = true;
+                        // 엉뚱한 페이지 방지 (ID 확인)
+                        if (html.includes(`szBjId="${item.id}"`) || html.includes(`szBjId = "${item.id}"`)) {
                             
-                            // 팬 수
-                            if (stationInfo.station.upd && stationInfo.station.upd.fan_cnt) {
-                                resultData.fans = parseInt(stationInfo.station.upd.fan_cnt);
+                            // A. 라이브 상태 추출
+                            const broadNoMatch = html.match(/"broad_no"\s*:\s*"?(\d+)"?/);
+                            const rawBroadNo = broadNoMatch ? broadNoMatch[1] : null;
+                            const rawIsLive = (rawBroadNo && parseInt(rawBroadNo) > 0) ? true : false;
+
+                            // B. 시청자 수 추출
+                            const viewMatch = html.match(/"current_sum_viewer"\s*:\s*"?(\d+)"?/);
+                            const rawViewers = viewMatch ? viewMatch[1] : 0;
+
+                            // [검증] 라이브 값이 boolean/0/1 인가? + 시청자가 정수인가?
+                            if (Validator.isValidLive(rawIsLive) && Validator.isValidViewer(rawViewers)) {
+                                resultData.isLive = rawIsLive;
+                                resultData.viewers = parseInt(rawViewers);
+                                isLiveSuccess = true;
+                                resultData._debug.push("Live:Web_OK");
+                            } else {
+                                resultData._debug.push("Live:Invalid");
                             }
-                            // 구독자 수
-                            if (stationInfo.subscription) {
-                                if (typeof stationInfo.subscription === 'number') resultData.subscribers = stationInfo.subscription;
-                                else if (stationInfo.subscription.cnt) resultData.subscribers = stationInfo.subscription.cnt;
+
+                            // C. 썸네일/타이틀 (방송 중일 때만)
+                            if (resultData.isLive) {
+                                const titleMatch = html.match(/"broad_title"\s*:\s*"([^"]+)"/);
+                                if(titleMatch) resultData.title = titleMatch[1];
+                                const thumbMatch = html.match(/"broad_thumb"\s*:\s*"([^"]+)"/);
+                                if(thumbMatch) resultData.thumbnail = thumbMatch[1];
                             }
-                        }
 
-                    } catch (e) {
-                        resultData._debug.push("M2:Err");
-                    }
-                }
-
-                // ----------------------------------------------------------------
-                // METHOD 3: HTML 파싱 (검증 기준: BJ ID 매칭 확인)
-                // ----------------------------------------------------------------
-                // 앞선 API들이 모두 엉뚱한 응답을 줬을 때 실행
-                if (!isValidDataFound) {
-                    try {
-                        const targetUrl = `https://ch.sooplive.co.kr/${item.id}`;
-                        const webRes = await fetch(targetUrl, {
-                            headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'text/html' }
-                        });
-
-                        if (webRes.ok) {
-                            const html = await webRes.text();
-                            
-                            // [검증] HTML 안에 우리가 요청한 BJ ID가 포함되어 있는가? (엉뚱한 페이지 방지)
-                            // 예: szBjId = "test_id"
-                            if (html.includes(`szBjId = "${item.id}"`) || html.includes(`szBjId="${item.id}"`)) {
-                                isValidDataFound = true;
-                                resultData._debug.push("M3:ValidHTML");
-
-                                // 데이터 추출
-                                const broadNoMatch = html.match(/"broad_no"\s*:\s*"?(\d+)"?/);
-                                if (broadNoMatch && parseInt(broadNoMatch[1]) > 0) {
-                                    resultData.isLive = true;
-                                    const viewMatch = html.match(/"current_sum_viewer"\s*:\s*"?(\d+)"?/);
-                                    if(viewMatch) resultData.viewers = parseInt(viewMatch[1]);
-                                }
-
+                            // D. 팬 수 보완 (API 실패 시에만 HTML에서 긁어옴)
+                            if (!isFanSuccess) {
                                 const fanMatch = html.match(/"fan_cnt"\s*:\s*"?(\d+)"?/);
-                                if (fanMatch) resultData.fans = parseInt(fanMatch[1]);
+                                const rawFanWeb = fanMatch ? fanMatch[1] : 0;
+                                if (Validator.isValidFan(rawFanWeb)) {
+                                    resultData.fans = parseInt(rawFanWeb);
+                                    isFanSuccess = true;
+                                    resultData._debug.push("Fan:Web_OK");
+                                }
                             }
+                        } else {
+                            resultData._debug.push("Live:WrongPage");
                         }
-                    } catch (e) {
-                        resultData._debug.push("M3:Err");
+                    } else {
+                        resultData._debug.push(`Live:HTTP_${webRes.status}`);
                     }
+                } catch (e) {
+                    resultData._debug.push("Live:Err");
                 }
 
-                // 최종적으로 유효 데이터를 못 찾았으면 로그 남기기
-                if (!isValidDataFound) {
-                    resultData._debug.push("ALL_FAIL");
+                // 최종 결과 정리
+                // 팬 수 자연수 아니면 무조건 0 처리
+                if (!isFanSuccess) {
+                    resultData.fans = 0; 
+                    resultData._debug.push("FINAL:FanFail");
                 }
                 
                 resultData._debug = resultData._debug.join('|');
                 results.push(resultData);
             } 
             
-            // [CASE 2] CHZZK (치지직) - 기존 코드 유지
+            // [CASE 2] CHZZK (치지직)
             else {
                 let chzzkData = {
-                    id: item.id,
-                    platform: 'chzzk',
-                    isLive: false,
-                    viewers: 0,
-                    fans: 0,
-                    subscribers: 0,
-                    profileUrl: ''
+                    id: item.id, platform: 'chzzk',
+                    isLive: false, viewers: 0, fans: 0, subscribers: 0, profileUrl: '',
+                    _debug: 'CHZZK'
                 };
                 try {
                     const chzzkRes = await fetch(`https://api.chzzk.naver.com/service/v1/channels/${item.id}`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
                     if (chzzkRes.ok) {
                         const json = await chzzkRes.json();
-                        // 치지직 검증: content 객체가 있는가?
                         if (json.content) {
                             chzzkData.isLive = json.content.openLive || false; 
                             chzzkData.fans = json.content.followerCount || 0;
