@@ -116,7 +116,7 @@ async function checkLiveReal(data) {
                 }
 
                 //변수변경
-                if (r.liveon) {
+                if (r.isLive) {
                     // [방송 중]
                     c.classList.add('is-live');
                     if (badge) {
