@@ -1,18 +1,18 @@
 /* js/dashboard_loader.js */
 
-// 그리기 도구는 항상 필요하므로 import
 import { renderCards, renderBalloons, renderFooter, adjustWrapperSize } from './renderer.js';
 
 async function init() {
     try {
-        // 1. 데이터 가져오기 (매우 빠름)
+        // 1. [항상 실행] DB에서 최신 멤버 정보 가져오기 (가벼움)
+        // 닉네임, 프사 변경 등은 여기서 바로 반영됨
         const res = await fetch('/api/get_list');
         const data = await res.json();
+        
         if (!data || data.length === 0) return;
-
         data.sort((a, b) => a.id.localeCompare(b.id));
 
-        // 2. 데이터 분류 (단순 로직이라 여기서 수행)
+        // 데이터 분류
         const groupedNodes = [];
         const noGroupNodes = [];
         data.forEach(m => {
@@ -21,50 +21,58 @@ async function init() {
             else noGroupNodes.push(m);
         });
 
-        // 3. 미분류(Footer)는 계산 불필요하므로 즉시 렌더링
+        // 미분류(Footer)는 계산 필요 없으니 즉시 렌더링
         renderFooter(noGroupNodes);
 
-        // 4. [핵심] 캐시 확인 및 분기 처리
+        // 2. [캐시 확인] 그룹 멤버가 있는 경우
         if (groupedNodes.length > 0) {
-            const signature = generateListSignature(groupedNodes); // 현재 멤버 명단 Hash
-            const cachedData = loadLayoutCache(signature);
+            const currentSignature = generateListSignature(groupedNodes);
+            
+            // 캐시에서 '좌표'와 '체인(순서)'만 가져옴 (멤버 정보 X)
+            const cachedLayout = loadLayoutCache(currentSignature);
 
-            if (cachedData) {
-                // [A] 캐시 적중: 계산기(layout_calculator.js) 안 부름! 바로 그림.
-                console.log("⚡ 캐시 사용: 계산기 로딩 생략");
-                renderCards(cachedData.positions, groupedNodes);
-                renderBalloons(cachedData.chain, cachedData.positions);
-                adjustWrapperSize(cachedData.positions);
+            if (cachedLayout) {
+                // [A] 인원 변동 없음 -> 계산기 안 돌림 (매우 빠름)
+                console.log("⚡ [Smart Cache] 최신 DB 정보에 + 캐시된 좌표 적용");
+                
+                // 최신 데이터(groupedNodes)를 그릴 건데, 위치는 캐시(cachedLayout.positions)를 씀
+                renderCards(cachedLayout.positions, groupedNodes);
+                
+                // 그룹 묶음 선 그리기 (캐시된 체인 정보 사용)
+                renderBalloons(cachedLayout.chain, cachedLayout.positions);
+                
+                adjustWrapperSize(cachedLayout.positions);
             } else {
-                // [B] 캐시 실패(인원 변동): 계산기 모듈을 동적으로 가져옴 (Dynamic Import)
-                console.log("🐢 인원 변동 감지: 계산기 로딩 중...");
+                // [B] 인원 변동 있음 -> 계산기 가동 (느림)
+                console.log("🐢 [Recalculate] 인원 변동 감지! 좌표 재계산...");
                 
-                // 여기서 layout_calculator.js를 불러옴
                 const calculator = await import('./layout_calculator.js'); 
-                
-                // 계산 수행
                 const result = calculator.calculateLayout(groupedNodes);
                 
-                // 결과 그리기
+                // 화면 그리기
                 renderCards(result.positions, groupedNodes);
                 renderBalloons(result.chain, new Map(result.positions));
                 adjustWrapperSize(result.positions);
 
-                // 결과 캐시에 저장
-                saveLayoutCache(signature, result.positions, result.chain);
+                // [저장] 멤버 정보는 빼고, '좌표'와 '체인'만 저장함
+                saveLayoutCache(currentSignature, result.positions, result.chain);
             }
         }
 
-        // 5. 라이브 상태 체크 (항상 수행)
+        // 3. [항상 실행] 라이브 상태 및 시청자 수 체크 (실시간성 필수)
         checkLiveReal(data);
 
     } catch (e) { console.error("Loader Error:", e); }
 }
 
-// 헬퍼: 멤버 명단으로 고유 키 생성
+// -------------------------------------------------------
+// 헬퍼 함수들
+// -------------------------------------------------------
+
 function generateListSignature(nodes) {
     return nodes.map(n => n.id).sort().join('|');
 }
+
 function parseGroups(m) {
     const set = new Set();
     if(m.group_name) m.group_name.split(',').forEach(g=> {if(g.trim()) set.add(g.trim())});
@@ -72,23 +80,37 @@ function parseGroups(m) {
     return Array.from(set);
 }
 
-// 캐시 관리
+// [수정] 캐시 로드: 좌표와 체인구조만 불러옴
 function loadLayoutCache(sig) {
     try {
-        const raw = localStorage.getItem('layout_v2');
+        const raw = localStorage.getItem('layout_v3_light'); // 키 이름 변경 (구버전 충돌 방지)
         if(!raw) return null;
+        
         const parsed = JSON.parse(raw);
-        if(parsed.signature !== sig) return null; // 명단 다르면 무효
-        return { positions: new Map(parsed.positions), chain: parsed.chain };
+        if(parsed.signature !== sig) return null; // 멤버 구성이 다르면 무효
+
+        return { 
+            positions: new Map(parsed.positions), 
+            chain: parsed.chain 
+        };
     } catch(e) { return null; }
 }
+
+// [수정] 캐시 저장: 멤버 상세정보(members)는 저장하지 않음! (용량 절약 & 정보 갱신 보장)
 function saveLayoutCache(sig, positionsArr, chain) {
-    // positionsArr는 이미 [[id, pos], ...] 형태여야 함 (Map은 JSON저장 불가)
-    const data = { signature: sig, positions: positionsArr, chain: chain };
-    localStorage.setItem('layout_v2', JSON.stringify(data));
+    // positionsArr가 Map이면 Array로 변환
+    const posArray = (positionsArr instanceof Map) ? Array.from(positionsArr.entries()) : positionsArr;
+    
+    // chain 객체 내부의 members 배열도 ID만 남기거나 최소화하면 좋지만, 
+    // 로직 단순화를 위해 chain 구조는 그대로 저장 (좌표 계산의 결과물이므로)
+    const data = { 
+        signature: sig, 
+        positions: posArray, 
+        chain: chain 
+    };
+    localStorage.setItem('layout_v3_light', JSON.stringify(data));
 }
 
-// 라이브 체크 (기존과 동일)
 async function checkLiveReal(data) {
     const uniqueIds = [...new Set(data.map(m=>m.id))];
     const targets = uniqueIds.map(id => {
@@ -102,7 +124,8 @@ async function checkLiveReal(data) {
         });
         const results = await res.json();
         results.forEach(r => {
-            const cards = document.querySelectorAll(`.card[data-id="${r.id.trim()}"]`);
+            const safeId = r.id.trim();
+            const cards = document.querySelectorAll(`.card[data-id="${safeId}"]`);
             cards.forEach(c => {
                 const badge = c.querySelector('.status-badge');
                 const fanEl = c.querySelector('.fan-cnt');
