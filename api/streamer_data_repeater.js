@@ -37,7 +37,7 @@ export default async function handler(req, res) {
 
                     if (stationInfo && stationInfo.station && stationInfo.station.upd) {
                         fans = stationInfo.station.upd.fan_cnt || 0;
-                        subscribers = stationInfo.subscription || 0; // 구독자 수
+                        subscribers = stationInfo.station.subscription || 0; // 구독자 수
                     }
 
                     results.push({
