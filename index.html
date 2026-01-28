@@ -6,18 +6,18 @@
     <title>유앤아이매방랑 Final Dashboard</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
-        /* [기본 설정 - 건드리지 않음] */
+        /* [기본 설정] */
         body { margin: 0; background: #f0f2f5; font-family: 'Pretendard', sans-serif; overflow-x: hidden; height: 100vh; color: #333; }
         .container { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; }
         .admin-link { position: fixed; top: 20px; right: 20px; font-size: 1.5rem; text-decoration: none; opacity: 0.5; z-index: 2000; }
 
-        /* [헤더 - 건드리지 않음] */
+        /* [헤더] */
         header { flex: 0 0 auto; width: 100%; background: #fff; padding: 15px 0; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); z-index: 100; border-bottom: 1px solid #eee; }
         h1 { margin: 0 0 5px 0; font-size: 1.8rem; font-weight: 900; color: #333; letter-spacing: -1px; }
         .refresh-btn { background: #333; color: #fff; border: 1px solid #444; padding: 6px 15px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; cursor: pointer; }
         .refresh-btn:hover { background: #555; }
 
-        /* [메인 영역 - 건드리지 않음] */
+        /* [메인 영역] */
         #main-area {
             flex: 1; width: 100%; position: relative; overflow: auto; 
             background: radial-gradient(circle at 50% 50%, #ffffff 0%, #e9ecef 100%);
@@ -32,7 +32,7 @@
         svg { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none; overflow: visible; }
         #card-overlay { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 2; }
 
-        /* [하단 영역 - 건드리지 않음] */
+        /* [하단 영역] */
         #footer-area {
             flex: 0 0 auto; width: 90%; max-width: 1200px; background: #fff;
             border-top: 1px solid #ddd; padding: 20px; margin-bottom: 20px; border-radius: 10px;
@@ -42,49 +42,55 @@
         .no-group-grid { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; }
 
         /* ==========================================================================
-           [수정된 디자인 적용 구간] : 요청하신 8가지 디자인 반영
+           [CARD 디자인]
            ========================================================================== */
         .card {
             position: absolute; 
-            /* 1. 박스 크기 확대 및 패딩 여유 있게 */
-            width: 380px; height: 210px;
+            /* [수정] 가로 길이 축소 (380px -> 310px) */
+            width: 310px; height: 210px;
             background: #fff; border-radius: 20px; 
             border: 1px solid #ddd; 
             box-shadow: 0 4px 15px rgba(0,0,0,0.08);
             display: flex; flex-direction: row; 
-            padding: 25px; box-sizing: border-box;
-            gap: 20px; /* 좌우 섹션 간격 */
+            padding: 20px; box-sizing: border-box; /* 패딩 약간 축소 */
+            gap: 15px; /* 내부 간격 조정 */
             cursor: pointer; transition: transform 0.2s, top 0.5s, left 0.5s;
             z-index: 10; overflow: hidden;
         }
         .card:hover { transform: scale(1.05); z-index: 999; box-shadow: 0 8px 25px rgba(0,0,0,0.15); border-color: #bbb; }
         
-        /* 왼쪽 섹션: 플랫폼로고 -> 이미지 -> 배지 -> 닉네임 -> ID */
+        /* [치지직 테마] 배경을 어두운 그레이(#2c2f33)로 설정하여 흰 로고 가시성 확보 */
+        .card.chzzk-theme {
+            background: #2c2f33; 
+            border-color: #40444b;
+            color: #fff; /* 기본 텍스트 화이트 */
+        }
+        .card.chzzk-theme:hover { border-color: #00ffa3; } /* 호버 시 치지직 포인트 컬러 */
+
+        /* 좌측 섹션 */
         .card-left {
-            flex: 0 0 100px; 
+            flex: 0 0 90px; /* 너비 약간 축소 */
             display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-            /* 기존 오른쪽 구분선 제거 */
-            border-right: none; padding-right: 0; margin-right: 0;
         }
 
-        /* 8. 플랫폼 로고 이미지 스타일 */
         .platform-logo {
             height: 16px; 
             object-fit: contain;
-            margin-bottom: 8px; /* 프로필 이미지와 간격 */
+            margin-bottom: 8px; 
         }
         
         .img-wrap { 
             position: relative; 
-            width: 90px; height: 90px; 
+            width: 80px; height: 80px; /* 이미지 크기 약간 조정 */
             display: flex; flex-direction: column; align-items: center;
         }
-        /* 프로필 이미지 */
         .profile-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid #f0f0f0; transition: border-color 0.3s; }
         
-        /* 2. ON/OFF 배지를 이미지 아래로 이동 (relative/absolute 제거 후 flow 배치) */
+        /* 치지직 테마일 때 프로필 테두리 조정 */
+        .card.chzzk-theme .profile-img { border-color: #444; }
+
         .status-badge {
-            margin-top: 8px; /* 이미지와 간격 */
+            margin-top: 8px; 
             font-size: 0.7rem; font-weight: 800;
             padding: 4px 10px; border-radius: 12px; 
             color: #fff; box-shadow: none;
@@ -93,14 +99,11 @@
         .badge-live { background: #ff4757; }
         .badge-off { background: #adb5bd; }
 
-        /* 3. 닉네임/아이디 레이어 고정 및 잘림 방지 */
         .user-info-box {
-            width: 100%;
-            text-align: center;
-            margin-top: 4px;
+            width: 100%; text-align: center; margin-top: 4px;
         }
         .nick { 
-            font-size: 1.1rem; font-weight: 800; color: #333; 
+            font-size: 1.05rem; font-weight: 800; color: #333; 
             line-height: 1.2;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
             margin-bottom: 2px;
@@ -110,8 +113,12 @@
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
             display: block;
         }
-        
-        /* 오른쪽 섹션: 그룹 리스트(상단), 통계(하단) */
+
+        /* 치지직 테마 텍스트 컬러 오버라이딩 */
+        .card.chzzk-theme .nick { color: #fff; }
+        .card.chzzk-theme .id-text { color: #aaa; }
+
+        /* 우측 섹션 */
         .card-right { 
             flex: 1; 
             display: flex; flex-direction: column; 
@@ -121,41 +128,50 @@
         }
 
         .group-list {
-            display: flex; flex-direction: column; gap: 6px;
+            display: flex; flex-direction: column; gap: 5px;
             overflow-y: auto; max-height: 120px;
         }
-        /* 6. 그룹 앞 색상 점 표기 & 7. 텍스트 좌측 정렬 */
         .group-item {
-            font-size: 0.85rem; background: #f8f9fa; color: #495057; 
-            padding: 8px 10px; border-radius: 8px; font-weight: 700;
-            display: flex; align-items: center; justify-content: flex-start; /* 좌측 정렬 */
-            gap: 8px;
+            font-size: 0.8rem; background: #f8f9fa; color: #495057; 
+            padding: 6px 8px; border-radius: 6px; font-weight: 700;
+            display: flex; align-items: center; justify-content: flex-start; 
+            gap: 6px;
         }
         .group-dot {
-            width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-            background-color: #333; /* 기본 점 색상 */
+            width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+            background-color: #333; 
         }
+
+        /* 치지직 테마 그룹 리스트 스타일 */
+        .card.chzzk-theme .group-item { background: #3a3e44; color: #ddd; }
+        .card.chzzk-theme .group-dot { background-color: #00ffa3; } /* 포인트 컬러 */
         
-        /* 4. 버튼 삭제됨 & 5. 통계 이동 (우측 하단 정렬) */
         .stats-container {
             margin-top: auto;
             display: flex; flex-direction: column; 
-            align-items: flex-end; /* 우측 정렬 */
+            align-items: flex-end; 
             gap: 2px;
         }
         .stat-row {
-            font-size: 0.9rem; color: #444; font-weight: 700;
+            font-size: 0.85rem; color: #444; font-weight: 700;
         }
         .stat-label {
-            font-weight: normal; color: #888; font-size: 0.8rem; margin-right: 4px;
+            font-weight: normal; color: #888; font-size: 0.75rem; margin-right: 4px;
         }
 
+        /* 치지직 테마 통계 텍스트 */
+        .card.chzzk-theme .stat-row { color: #eee; }
+        .card.chzzk-theme .stat-label { color: #bbb; }
+
         .card.is-live { border-color: #ff4757; background: #fffbfb; }
+        /* 치지직 라이브일 경우 배경색 */
+        .card.chzzk-theme.is-live { background: #3b2e30; border-color: #ff4757; }
+        
         .card.is-live .profile-img { border-color: #ff4757; animation: pulse 2s infinite; }
         
         .no-group-grid .card { position: relative; left: auto !important; top: auto !important; }
 
-        /* [풍선 스타일 - 건드리지 않음] */
+        /* [풍선 스타일] */
         .group-hull { 
             fill-opacity: 0.08; 
             stroke-linejoin: round; 
@@ -196,12 +212,12 @@
 </div>
 
 <script>
-    /* [설정 변경] 카드가 커졌으므로(380px) 그리드 간격과 열 개수를 조정해야 배치가 안 깨집니다. */
-    const COLS = 4;        // 기존 5 -> 4 (카드 넓이 고려)
-    const CARD_W = 380;    // 디자인 요청: 너비 확대
-    const CARD_H = 210;    // 디자인 요청: 높이 약간 확대
-    const GRID_W = 410;    // 카드 간격 (CARD_W + 여백)
-    const GRID_H = 260;    // 세로 간격
+    /* [설정 변경] 카드 너비 축소(310px)에 맞춰 열 개수(COLS)와 그리드 간격을 조정했습니다. */
+    const COLS = 5;        // 너비가 줄었으므로 한 줄에 5개 배치 가능
+    const CARD_W = 310;    // [수정] 카드 가로 길이 축소
+    const CARD_H = 210;    
+    const GRID_W = 330;    // 카드 간격
+    const GRID_H = 260;    
 
     async function init() {
         try {
@@ -231,7 +247,6 @@
         } catch (e) { console.error(e); }
     }
 
-    /* [로직 함수들 - 변경 없음] */
     function runLogic(members) {
         const groupMap = {};
         members.forEach(m => {
@@ -393,22 +408,20 @@
         return maxOverlap > 0 ? best : null;
     }
 
-    // =========================================================
-    // [UI 수정됨] getCardHTML: 디자인 요청사항 1~8 반영
-    // =========================================================
     function getCardHTML(d) {
         const pf = d.platform || 'soop';
         const isSoop = (pf === 'soop' || pf === 'afreeca');
         
-        // 8. 실제 로고 이미지 URL 적용 (위키미디어 CDN)
+        // https://www.derchaeum.com/m/board.html?code=derchaeum_board1&page=1&board_cate=&num1=998260&num2=00000&type=q&type2=u&s_id=&stext=&ssubject=&shname=&scontent=&sbrand=&sgid=&datekey=&branduid= 알려주신 URL 적용
         const logoUrl = isSoop 
             ? "https://res.sooplive.co.kr/images/svg/soop_logo.svg" 
             : "https://ssl.pstatic.net/static/nng/glive/gif/logo_light.gif";
         
         const idDisplay = (!isSoop) ? 'display:none;' : '';
 
-        // 6 & 7. 그룹 리스트: 색상 점 표기 + 좌측 정렬 (CSS .group-item)
-        // 색상은 임시로 회색(#333) 처리. 특정 색상 원하면 style에서 .group-dot background 변경 필요
+        // [테마 적용] 치지직이면 card 클래스에 'chzzk-theme' 추가
+        const cardClass = isSoop ? '' : 'chzzk-theme';
+
         let groupListHTML = '';
         if(d._groups && d._groups.length > 0) {
             d._groups.forEach(g => {
@@ -417,29 +430,31 @@
         }
 
         return `
-            <div class="card-left">
-                <img src="${logoUrl}" class="platform-logo" alt="${pf}">
-                
-                <div class="img-wrap">
-                    <img src="${d.profile_img || 'https://via.placeholder.com/100'}" class="profile-img">
-                </div>
-                <div class="status-badge badge-off">OFF</div>
-
-                <div class="user-info-box">
-                    <div class="nick">${d.nickname}</div>
-                    <div class="id-text" style="${idDisplay}">@${d.id}</div>
-                </div>
-            </div>
-
-            <div class="card-right">
-                <div class="group-list">${groupListHTML}</div>
-                
-                <div class="stats-container">
-                    <div class="stat-row">
-                        <span class="stat-label">구독자</span> <span class="sub-cnt">-</span>
+            <div class="card-inner-wrapper ${cardClass}" style="display:contents">
+                <div class="card-left">
+                    <img src="${logoUrl}" class="platform-logo" alt="${pf}">
+                    
+                    <div class="img-wrap">
+                        <img src="${d.profile_img || 'https://via.placeholder.com/100'}" class="profile-img">
                     </div>
-                    <div class="stat-row">
-                        <span class="stat-label">애청자</span> <span class="fan-cnt">0</span>
+                    <div class="status-badge badge-off">OFF</div>
+
+                    <div class="user-info-box">
+                        <div class="nick">${d.nickname}</div>
+                        <div class="id-text" style="${idDisplay}">@${d.id}</div>
+                    </div>
+                </div>
+
+                <div class="card-right">
+                    <div class="group-list">${groupListHTML}</div>
+                    
+                    <div class="stats-container">
+                        <div class="stat-row">
+                            <span class="stat-label">구독자</span> <span class="sub-cnt">-</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">애청자</span> <span class="fan-cnt">0</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -453,17 +468,23 @@
             const member = allMembers.find(m => m.id === id);
             if(!member) return;
             const card = document.createElement('div');
-            card.className = 'card';
+            
+            // [테마 클래스 추가] 치지직일 경우 card 엘리먼트 자체에 클래스 부여
+            const isChzzk = !(member.platform === 'soop' || member.platform === 'afreeca');
+            card.className = isChzzk ? 'card chzzk-theme' : 'card';
+            
             card.setAttribute('data-id', id);
             card.style.left = pos.finalX + "px";
             card.style.top = pos.finalY + "px";
-            card.innerHTML = getCardHTML(member);
+            // getCardHTML 내부 wrapper 제거하고 내용물만 사용
+            const innerHTML = getCardHTML(member).replace('<div class="card-inner-wrapper " style="display:contents">', '').replace('<div class="card-inner-wrapper chzzk-theme" style="display:contents">', '').replace(/<\/div>\s*$/, '');
+            card.innerHTML = innerHTML;
+
             card.onclick = (e) => { if(e.target.tagName !== 'BUTTON') openLink(member); };
             overlay.appendChild(card);
         });
     }
 
-    // [선 그리기 - 위치값 조정만 함 (카드가 커져서)]
     function renderBalloons(chain, posMap) {
         const svg = d3.select("#svg-layer");
         svg.selectAll("*").remove(); 
@@ -479,7 +500,6 @@
             g.members.forEach(m => {
                 if(posMap.has(m.id)) {
                     const pos = posMap.get(m.id);
-                    // 카드가 커졌으니 여유 공간(padding)도 살짝 조정
                     const padding = 8; 
                     const x = pos.finalX; 
                     const y = pos.finalY;
@@ -543,8 +563,15 @@
         area.style.display = 'block';
         list.forEach(d => {
             const card = document.createElement('div');
-            card.className = 'card';
-            card.innerHTML = getCardHTML(d);
+            
+            // [테마 클래스 추가 - Footer]
+            const isChzzk = !(d.platform === 'soop' || d.platform === 'afreeca');
+            card.className = isChzzk ? 'card chzzk-theme' : 'card';
+
+            // HTML 정제
+            const innerHTML = getCardHTML(d).replace('<div class="card-inner-wrapper " style="display:contents">', '').replace('<div class="card-inner-wrapper chzzk-theme" style="display:contents">', '').replace(/<\/div>\s*$/, '');
+            card.innerHTML = innerHTML;
+
             card.onclick = (e) => { if(e.target.tagName !== 'BUTTON') openLink(d); };
             grid.appendChild(card);
         });
@@ -561,7 +588,6 @@
         return Array.from(set);
     }
 
-    // [데이터 연동 - 변경 없음]
     async function checkLiveReal(data) {
         const uniqueIds = [...new Set(data.map(m=>m.id))];
         const targets = uniqueIds.map(id => {
