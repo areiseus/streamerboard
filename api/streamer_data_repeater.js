@@ -21,13 +21,13 @@ export default async function handler(req, res) {
 
         await Promise.all(items.map(async (item) => {
             // ============================================================
-            // [CASE 1] SOOP (AfreecaTV)
+            // [CASE 1] SOOP
             // ============================================================
             if (item.platform === 'soop') {
                 try {
                     // 라이브 상세 정보
                     const liveDetail = await client.livedetail.channel(item.id);
-                    const isLive = (liveDetail.RESULT === 1) ? 1 : 0;
+                    const isLive = (liveDetail.result === 1) ? 1 : 0;
                     
                     // 방송국 정보 (애청자, 구독자)
                     const stationInfo = await client.channel.station(item.id);
