@@ -113,67 +113,71 @@ function saveLayoutCache(sig, positionsArr, chain) {
 
 
 async function checkLiveReal(data) {
-    // 1. 중복 ID 제거 및 타겟 목록 생성
     const uniqueIds = [...new Set(data.map(m => m.id))];
     const targets = uniqueIds.map(id => {
         const org = data.find(m => m.id === id);
         return { id: org.id, platform: org.platform };
     });
 
-    // [UI] 시작 시: 제목 옆에 '로딩 중' 표시
     const titleDebugEl = document.getElementById('title-debug-info');
     if (titleDebugEl) {
-        titleDebugEl.innerText = " ⏳ 업데이트 중...";
-        titleDebugEl.style.color = "#888"; // 회색
+        titleDebugEl.innerText = " ⏳ 조회 중...";
+        titleDebugEl.style.color = "#888";
     }
 
     try {
-        // 2. 서버에 데이터 요청
         const res = await fetch('/api/streamer_data_repeater', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ items: targets })
         });
 
-        // 3. 응답 대기 (여기서 시간이 걸림)
         const results = await res.json();
 
-        // [UI] 성공 시: '완료' 및 시간 표시
         if (titleDebugEl) {
             titleDebugEl.innerText = ` ✅ 업데이트 완료 (${new Date().toLocaleTimeString()})`;
-            titleDebugEl.style.color = "green"; // 초록색
+            titleDebugEl.style.color = "green";
         }
 
-        // 4. 받아온 데이터로 카드 업데이트
         results.forEach(r => {
             const safeId = r.id.trim();
-            // 해당 ID를 가진 모든 카드 선택 (멀티 그룹일 수 있으므로 All)
             const cards = document.querySelectorAll(`.card[data-id="${safeId}"]`);
 
             cards.forEach(c => {
+                // -----------------------------------------------------------
+                // [핵심 수정] 디버그 로그 태그가 없으면 강제로 생성!
+                // -----------------------------------------------------------
+                let debugEl = c.querySelector('.debug-log');
+                if (!debugEl) {
+                    debugEl = document.createElement('div');
+                    debugEl.className = 'debug-log';
+                    // 카드 안쪽 제일 끝에 붙임
+                    c.appendChild(debugEl);
+                }
+
+                // 내용 채우기 (예: "L:M3 | F:M1")
+                if (r._debug) {
+                    debugEl.innerText = r._debug;
+                    
+                    // "Fail" 글자가 들어가면 빨간색, 아니면 형광 초록
+                    if (r._debug.toUpperCase().includes('FAIL')) {
+                        debugEl.style.color = '#ff4444'; // 빨강
+                    } else {
+                        debugEl.style.color = '#00ff00'; // 형광 초록
+                    }
+                }
+                // -----------------------------------------------------------
+
+                // [기존 로직 유지]
                 const badge = c.querySelector('.status-badge');
                 const fanEl = c.querySelector('.fan-cnt');
                 const subEl = c.querySelector('.sub-cnt');
                 const subRow = c.querySelector('.sub-row');
                 const profileImg = c.querySelector('.profile-img');
-                const thumbEl = c.querySelector('.card-thumb'); // 썸네일 이미지 태그 (클래스명 확인 필요)
+                const thumbEl = c.querySelector('.card-thumb');
 
-                // [디버그 로그] 성공/실패 여부 카드 구석에 표시
-                const debugEl = c.querySelector('.debug-log');
-                if (debugEl && r._debug) {
-                    debugEl.innerText = r._debug;
-                    // Fail 텍스트가 있으면 빨간색, 아니면 형광 초록
-                    if (r._debug.toUpperCase().includes('FAIL')) {
-                        debugEl.style.color = 'red';
-                    } else {
-                        debugEl.style.color = '#00ff00';
-                    }
-                }
-
-                // [팬 수 업데이트]
                 if (fanEl) fanEl.innerText = Number(r.fans || 0).toLocaleString();
 
-                // [구독자 업데이트]
                 if (subRow) {
                     if ((r.subscribers || 0) > 0) {
                         subRow.style.display = 'flex';
@@ -183,25 +187,19 @@ async function checkLiveReal(data) {
                     }
                 }
 
-                // [프로필 이미지 업데이트]
                 if (profileImg && r.profileUrl) {
                     if (profileImg.src !== r.profileUrl) profileImg.src = r.profileUrl;
                 }
 
-                // [라이브 상태 업데이트]
                 if (r.isLive) {
-                    // 방송 중 (ON)
                     c.classList.add('is-live');
                     if (badge) {
                         badge.innerText = "LIVE";
                         badge.classList.remove('badge-off');
                         badge.classList.add('badge-live');
                     }
-                    // 썸네일/타이틀 업데이트
                     if (thumbEl && r.thumbnail) thumbEl.src = r.thumbnail;
-                    
                 } else {
-                    // 방송 종료 (OFF)
                     c.classList.remove('is-live');
                     if (badge) {
                         badge.innerText = "OFF";
@@ -214,15 +212,12 @@ async function checkLiveReal(data) {
 
     } catch (e) {
         console.error(e);
-        // [UI] 실패 시: 에러 메시지 표시
         if (titleDebugEl) {
-            titleDebugEl.innerText = " ❌ 업데이트 실패";
+            titleDebugEl.innerText = " ❌ 실패";
             titleDebugEl.style.color = "red";
         }
     }
 }
-
-
 
 
 init();
