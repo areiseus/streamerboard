@@ -29,9 +29,9 @@ export default async function handler(req, res) {
                     const liveDetail = await client.live.detail(item.id);
                     const isLive = liveDetail && liveDetail.RESULT ? true : false;
 
-                    // broad_no가 존재하면 방송 중으로 판단
+                    // 라이브 정보 테스트용
                     const livetag = await client.LiveDetail.channel(item.id);
-                    const Liveon = (livetag.RESULT === 1) ? 1 : 0;
+                    const liveon = (livetag.RESULT === 1) ? 1 : 0;
 
                     //const liveon = 1;
                     
@@ -50,7 +50,7 @@ export default async function handler(req, res) {
                         id: item.id,
                         platform: 'soop',
                         isLive: isLive,
-                        Liveon: liveon,
+                        liveon: liveon,
                         fans: parseInt(fans),
                         subscribers: parseInt(subscribers)
                     });
