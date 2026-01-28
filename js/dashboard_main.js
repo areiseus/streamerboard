@@ -1,13 +1,11 @@
 /* js/dashboard_main.js */
 
 const COLS = 5; 
-const CARD_W = 260;    // 수정: 카드 폭 260px
+const CARD_W = 260;    
 const CARD_H = 210;    
-const GRID_W = 340;    // 수정: 간격 확보 (260 + 80)
+const GRID_W = 340;    
 const GRID_H = 260;    
 
-
-// 전역 색상 스케일 (그룹 점 색상 동기화용)
 const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
 
 async function init() {
@@ -29,13 +27,11 @@ async function init() {
             else noGroupNodes.push(m);
         });
 
-        // [최적화] 화면 먼저 렌더링
         renderFooter(noGroupNodes);
         if (groupedNodes.length > 0) {
             runLogic(groupedNodes);
         }
 
-        // [최적화] API 호출 비동기 실행 (라이브/구독자 체크)
         checkLiveReal(data);
 
     } catch (e) { console.error("Init Error:", e); }
@@ -161,7 +157,9 @@ function runLogic(members) {
     const wrapper = document.getElementById('content-wrapper');
     const containerH = Math.max(800, totalRows * GRID_H + 300);
     wrapper.style.height = containerH + "px";
-    wrapper.style.width = (COLS * GRID_W + 100) + "px"; 
+    
+    // [수정] wrapper width를 내용물에 딱 맞게 설정 (정렬을 위해)
+    wrapper.style.width = (COLS * GRID_W + 50) + "px"; 
 
     const contentHeight = totalRows * GRID_H;
     const startY = (containerH - contentHeight) / 2;
@@ -222,7 +220,6 @@ function getCardHTML(d) {
         });
     }
 
-    // [최적화] loading="lazy" 추가
     return `
         <div class="card-inner-wrapper ${cardClass}" style="display:contents">
             <div class="card-left">
@@ -254,7 +251,7 @@ function getCardHTML(d) {
 function renderCards(posMap, allMembers) {
     const overlay = document.getElementById('card-overlay');
     overlay.innerHTML = ''; 
-    const fragment = document.createDocumentFragment(); // [최적화] DOM 접근 최소화
+    const fragment = document.createDocumentFragment();
 
     posMap.forEach((pos, id) => {
         const member = allMembers.find(m => m.id === id);
@@ -370,6 +367,7 @@ function parseGroups(m) {
     return Array.from(set);
 }
 
+// [수정된 라이브 체크 로직]
 async function checkLiveReal(data) {
     const uniqueIds = [...new Set(data.map(m=>m.id))];
     const targets = uniqueIds.map(id => {
@@ -387,7 +385,10 @@ async function checkLiveReal(data) {
         const results = await res.json();
         
         results.forEach(r => {
-            const cards = document.querySelectorAll(`.card[data-id="${r.id}"]`);
+            // ID 매칭 시 공백 제거 등 안전장치 추가
+            const safeId = r.id.trim();
+            const cards = document.querySelectorAll(`.card[data-id="${safeId}"]`);
+            
             cards.forEach(c => {
                 const badge = c.querySelector('.status-badge');
                 const fanEl = c.querySelector('.fan-cnt');
@@ -401,17 +402,19 @@ async function checkLiveReal(data) {
                 
                 if(subRow) {
                     if(subCount > 0) {
-                        subRow.style.display = 'flex'; // 구독자 있으면 표시
+                        subRow.style.display = 'flex';
                         if(subEl) subEl.innerText = Number(subCount).toLocaleString();
                     } else {
-                        subRow.style.display = 'none'; // 없으면 숨김
+                        subRow.style.display = 'none';
                     }
                 }
 
+                // [Live Status 강력 적용]
                 if(r.isLive) {
                     c.classList.add('is-live');
                     if(badge) {
                         badge.innerText = "LIVE";
+                        // 클래스 충돌 방지를 위해 확실하게 제거 후 추가
                         badge.classList.remove('badge-off');
                         badge.classList.add('badge-live');
                     }
