@@ -58,7 +58,7 @@ export default async function handler(req, res) {
                         }
                   } catch (e) {
                     console.error(`SOOP Error (${item.id}):`, e.message);
-                }                   
+                  }                   
                     results.push({
                         id: item.id,
                         platform: 'soop',
@@ -66,7 +66,6 @@ export default async function handler(req, res) {
                         fans: parseInt(fans),
                         subscribers: parseInt(subscribers)
                     });
-                } 
             } 
             // ============================================================
             // [CASE 2] CHZZK (치지직)
@@ -91,7 +90,7 @@ export default async function handler(req, res) {
                     results.push({
                         id: item.id,
                         platform: 'chzzk',
-                        islive: isLive,
+                        isLive: isLive,
                         fans: parseInt(fans),
                         subscribers: parseInt(subscribers)
                     });
