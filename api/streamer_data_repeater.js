@@ -26,7 +26,7 @@ export default async function handler(req, res) {
             if (item.platform === 'soop') {
                 try {
                     // 라이브 상세 정보
-                    const liveDetail = await client.livedetail.channel(item.id);
+                    const liveDetail = await client.channel.livedetail(item.id);
                     const isLive = liveDetail.bno ? 1 : 0;
                     
                     // 방송국 정보 (애청자, 구독자)
