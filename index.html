@@ -46,30 +46,30 @@
            ========================================================================== */
         .card {
             position: absolute; 
-            /* [수정] 가로 길이 축소 (380px -> 310px) */
-            width: 310px; height: 210px;
+            /* 가로 길이 280px로 축소 */
+            width: 280px; height: 210px;
             background: #fff; border-radius: 20px; 
             border: 1px solid #ddd; 
             box-shadow: 0 4px 15px rgba(0,0,0,0.08);
             display: flex; flex-direction: row; 
-            padding: 20px; box-sizing: border-box; /* 패딩 약간 축소 */
-            gap: 15px; /* 내부 간격 조정 */
+            padding: 20px; box-sizing: border-box;
+            gap: 12px;
             cursor: pointer; transition: transform 0.2s, top 0.5s, left 0.5s;
             z-index: 10; overflow: hidden;
         }
         .card:hover { transform: scale(1.05); z-index: 999; box-shadow: 0 8px 25px rgba(0,0,0,0.15); border-color: #bbb; }
         
-        /* [치지직 테마] 배경을 어두운 그레이(#2c2f33)로 설정하여 흰 로고 가시성 확보 */
+        /* [치지직 테마] */
         .card.chzzk-theme {
             background: #2c2f33; 
             border-color: #40444b;
-            color: #fff; /* 기본 텍스트 화이트 */
+            color: #fff; 
         }
-        .card.chzzk-theme:hover { border-color: #00ffa3; } /* 호버 시 치지직 포인트 컬러 */
+        .card.chzzk-theme:hover { border-color: #00ffa3; }
 
         /* 좌측 섹션 */
         .card-left {
-            flex: 0 0 90px; /* 너비 약간 축소 */
+            flex: 0 0 85px; 
             display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
         }
 
@@ -81,12 +81,11 @@
         
         .img-wrap { 
             position: relative; 
-            width: 80px; height: 80px; /* 이미지 크기 약간 조정 */
+            width: 75px; height: 75px; 
             display: flex; flex-direction: column; align-items: center;
         }
         .profile-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid #f0f0f0; transition: border-color 0.3s; }
         
-        /* 치지직 테마일 때 프로필 테두리 조정 */
         .card.chzzk-theme .profile-img { border-color: #444; }
 
         .status-badge {
@@ -103,18 +102,17 @@
             width: 100%; text-align: center; margin-top: 4px;
         }
         .nick { 
-            font-size: 1.05rem; font-weight: 800; color: #333; 
+            font-size: 1.0rem; font-weight: 800; color: #333; 
             line-height: 1.2;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
             margin-bottom: 2px;
         }
         .id-text { 
-            font-size: 0.75rem; color: #999; 
+            font-size: 0.7rem; color: #999; 
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
             display: block;
         }
 
-        /* 치지직 테마 텍스트 컬러 오버라이딩 */
         .card.chzzk-theme .nick { color: #fff; }
         .card.chzzk-theme .id-text { color: #aaa; }
 
@@ -132,19 +130,18 @@
             overflow-y: auto; max-height: 120px;
         }
         .group-item {
-            font-size: 0.8rem; background: #f8f9fa; color: #495057; 
+            font-size: 0.75rem; background: #f8f9fa; color: #495057; 
             padding: 6px 8px; border-radius: 6px; font-weight: 700;
             display: flex; align-items: center; justify-content: flex-start; 
             gap: 6px;
         }
         .group-dot {
-            width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+            width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
             background-color: #333; 
         }
 
-        /* 치지직 테마 그룹 리스트 스타일 */
         .card.chzzk-theme .group-item { background: #3a3e44; color: #ddd; }
-        .card.chzzk-theme .group-dot { background-color: #00ffa3; } /* 포인트 컬러 */
+        .card.chzzk-theme .group-dot { background-color: #00ffa3; }
         
         .stats-container {
             margin-top: auto;
@@ -153,18 +150,16 @@
             gap: 2px;
         }
         .stat-row {
-            font-size: 0.85rem; color: #444; font-weight: 700;
+            font-size: 0.8rem; color: #444; font-weight: 700;
         }
         .stat-label {
-            font-weight: normal; color: #888; font-size: 0.75rem; margin-right: 4px;
+            font-weight: normal; color: #888; font-size: 0.7rem; margin-right: 4px;
         }
 
-        /* 치지직 테마 통계 텍스트 */
         .card.chzzk-theme .stat-row { color: #eee; }
         .card.chzzk-theme .stat-label { color: #bbb; }
 
         .card.is-live { border-color: #ff4757; background: #fffbfb; }
-        /* 치지직 라이브일 경우 배경색 */
         .card.chzzk-theme.is-live { background: #3b2e30; border-color: #ff4757; }
         
         .card.is-live .profile-img { border-color: #ff4757; animation: pulse 2s infinite; }
@@ -212,11 +207,11 @@
 </div>
 
 <script>
-    /* [설정 변경] 카드 너비 축소(310px)에 맞춰 열 개수(COLS)와 그리드 간격을 조정했습니다. */
-    const COLS = 5;        // 너비가 줄었으므로 한 줄에 5개 배치 가능
-    const CARD_W = 310;    // [수정] 카드 가로 길이 축소
+    /* [설정 변경] 카드 너비(280px)와 간격을 40px로 확보 */
+    const COLS = 5; 
+    const CARD_W = 280;    // 카드 너비
     const CARD_H = 210;    
-    const GRID_W = 330;    // 카드 간격
+    const GRID_W = 320;    // 간격 (280 + 40px Gap)
     const GRID_H = 260;    
 
     async function init() {
@@ -412,14 +407,13 @@
         const pf = d.platform || 'soop';
         const isSoop = (pf === 'soop' || pf === 'afreeca');
         
-        // https://www.derchaeum.com/m/board.html?code=derchaeum_board1&page=1&board_cate=&num1=998260&num2=00000&type=q&type2=u&s_id=&stext=&ssubject=&shname=&scontent=&sbrand=&sgid=&datekey=&branduid= 알려주신 URL 적용
         const logoUrl = isSoop 
             ? "https://res.sooplive.co.kr/images/svg/soop_logo.svg" 
             : "https://ssl.pstatic.net/static/nng/glive/gif/logo_light.gif";
         
         const idDisplay = (!isSoop) ? 'display:none;' : '';
 
-        // [테마 적용] 치지직이면 card 클래스에 'chzzk-theme' 추가
+        // [테마 적용]
         const cardClass = isSoop ? '' : 'chzzk-theme';
 
         let groupListHTML = '';
@@ -469,14 +463,13 @@
             if(!member) return;
             const card = document.createElement('div');
             
-            // [테마 클래스 추가] 치지직일 경우 card 엘리먼트 자체에 클래스 부여
             const isChzzk = !(member.platform === 'soop' || member.platform === 'afreeca');
             card.className = isChzzk ? 'card chzzk-theme' : 'card';
             
             card.setAttribute('data-id', id);
             card.style.left = pos.finalX + "px";
             card.style.top = pos.finalY + "px";
-            // getCardHTML 내부 wrapper 제거하고 내용물만 사용
+            
             const innerHTML = getCardHTML(member).replace('<div class="card-inner-wrapper " style="display:contents">', '').replace('<div class="card-inner-wrapper chzzk-theme" style="display:contents">', '').replace(/<\/div>\s*$/, '');
             card.innerHTML = innerHTML;
 
@@ -564,11 +557,9 @@
         list.forEach(d => {
             const card = document.createElement('div');
             
-            // [테마 클래스 추가 - Footer]
             const isChzzk = !(d.platform === 'soop' || d.platform === 'afreeca');
             card.className = isChzzk ? 'card chzzk-theme' : 'card';
 
-            // HTML 정제
             const innerHTML = getCardHTML(d).replace('<div class="card-inner-wrapper " style="display:contents">', '').replace('<div class="card-inner-wrapper chzzk-theme" style="display:contents">', '').replace(/<\/div>\s*$/, '');
             card.innerHTML = innerHTML;
 
@@ -596,7 +587,8 @@
         });
         
         try {
-            const res = await fetch('/api/soop_data_repeater', { 
+            // [수정 완료] streamer_data_repeater.js 로 요청
+            const res = await fetch('/api/streamer_data_repeater', { 
                      method: 'POST', 
                     headers: {'Content-Type': 'application/json'}, 
                     body: JSON.stringify({items: targets})
@@ -609,12 +601,13 @@
                 cards.forEach(c => {
                     const badge = c.querySelector('.status-badge');
                     const fanEl = c.querySelector('.fan-cnt');
+                    const subEl = c.querySelector('.sub-cnt');
                     
                     const fanCount = (r.fans !== undefined && r.fans !== null) ? r.fans : 0;
+                    const subCount = (r.subscribers !== undefined && r.subscribers !== null) ? r.subscribers : 0;
                     
-                    if(fanEl) {
-                        fanEl.innerText = Number(fanCount).toLocaleString();
-                    }
+                    if(fanEl) fanEl.innerText = Number(fanCount).toLocaleString();
+                    if(subEl) subEl.innerText = Number(subCount).toLocaleString();
 
                     if(r.isLive) {
                         c.classList.add('is-live');
