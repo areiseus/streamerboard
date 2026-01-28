@@ -1,124 +1,12 @@
-/* js/dashboard_loader.js */
-
-import { renderCards, renderBalloons, renderFooter, adjustWrapperSize } from './renderer.js';
-
-async function init() {
-    try {
-        // 1. [항상 실행] DB에서 최신 멤버 정보 가져오기 (가벼움)
-        // 닉네임, 프사 변경 등은 여기서 바로 반영됨
-        const res = await fetch('/api/get_list');
-        const data = await res.json();
-        
-        if (!data || data.length === 0) return;
-        data.sort((a, b) => a.id.localeCompare(b.id));
-
-        // 데이터 분류
-        const groupedNodes = [];
-        const noGroupNodes = [];
-        data.forEach(m => {
-            m._groups = parseGroups(m);
-            if (m._groups.length > 0) groupedNodes.push(m);
-            else noGroupNodes.push(m);
-        });
-
-        // 미분류(Footer)는 계산 필요 없으니 즉시 렌더링
-        renderFooter(noGroupNodes);
-
-        // 2. [캐시 확인] 그룹 멤버가 있는 경우
-        if (groupedNodes.length > 0) {
-            const currentSignature = generateListSignature(groupedNodes);
-            
-            // 캐시에서 '좌표'와 '체인(순서)'만 가져옴 (멤버 정보 X)
-            const cachedLayout = loadLayoutCache(currentSignature);
-
-            if (cachedLayout) {
-                // [A] 인원 변동 없음 -> 계산기 안 돌림 (매우 빠름)
-                console.log("⚡ [Smart Cache] 최신 DB 정보에 + 캐시된 좌표 적용");
-                
-                // 최신 데이터(groupedNodes)를 그릴 건데, 위치는 캐시(cachedLayout.positions)를 씀
-                renderCards(cachedLayout.positions, groupedNodes);
-                
-                // 그룹 묶음 선 그리기 (캐시된 체인 정보 사용)
-                renderBalloons(cachedLayout.chain, cachedLayout.positions);
-                
-                adjustWrapperSize(cachedLayout.positions);
-            } else {
-                // [B] 인원 변동 있음 -> 계산기 가동 (느림)
-                console.log("🐢 [Recalculate] 인원 변동 감지! 좌표 재계산...");
-                
-                const calculator = await import('./layout_calculator.js'); 
-                const result = calculator.calculateLayout(groupedNodes);
-                
-                // 화면 그리기
-                renderCards(result.positions, groupedNodes);
-                renderBalloons(result.chain, new Map(result.positions));
-                adjustWrapperSize(result.positions);
-
-                // [저장] 멤버 정보는 빼고, '좌표'와 '체인'만 저장함
-                saveLayoutCache(currentSignature, result.positions, result.chain);
-            }
-        }
-
-        // 3. [항상 실행] 라이브 상태 및 시청자 수 체크 (실시간성 필수)
-        checkLiveReal(data);
-
-    } catch (e) { console.error("Loader Error:", e); }
-}
-
-// -------------------------------------------------------
-// 헬퍼 함수들
-// -------------------------------------------------------
-
-function generateListSignature(nodes) {
-    return nodes.map(n => n.id).sort().join('|');
-}
-
-function parseGroups(m) {
-    const set = new Set();
-    if(m.group_name) m.group_name.split(',').forEach(g=> {if(g.trim()) set.add(g.trim())});
-    ['group_1','group_2','group_3'].forEach(k=>{ if(m[k]&&m[k].trim()) set.add(m[k].trim())});
-    return Array.from(set);
-}
-
-// [수정] 캐시 로드: 좌표와 체인구조만 불러옴
-function loadLayoutCache(sig) {
-    try {
-        const raw = localStorage.getItem('layout_v3_light'); // 키 이름 변경 (구버전 충돌 방지)
-        if(!raw) return null;
-        
-        const parsed = JSON.parse(raw);
-        if(parsed.signature !== sig) return null; // 멤버 구성이 다르면 무효
-
-        return { 
-            positions: new Map(parsed.positions), 
-            chain: parsed.chain 
-        };
-    } catch(e) { return null; }
-}
-
-// [수정] 캐시 저장: 멤버 상세정보(members)는 저장하지 않음! (용량 절약 & 정보 갱신 보장)
-function saveLayoutCache(sig, positionsArr, chain) {
-    // positionsArr가 Map이면 Array로 변환
-    const posArray = (positionsArr instanceof Map) ? Array.from(positionsArr.entries()) : positionsArr;
-    
-    // chain 객체 내부의 members 배열도 ID만 남기거나 최소화하면 좋지만, 
-    // 로직 단순화를 위해 chain 구조는 그대로 저장 (좌표 계산의 결과물이므로)
-    const data = { 
-        signature: sig, 
-        positions: posArray, 
-        chain: chain 
-    };
-    localStorage.setItem('layout_v3_light', JSON.stringify(data));
-}
-
-
 async function checkLiveReal(data) {
+    // 1. 중복 ID 제거 및 타겟 목록 생성
     const uniqueIds = [...new Set(data.map(m => m.id))];
     const targets = uniqueIds.map(id => {
         const org = data.find(m => m.id === id);
         return { id: org.id, platform: org.platform };
     });
 
+    // [UI] 제목 옆 로딩 표시
     const titleDebugEl = document.getElementById('title-debug-info');
     if (titleDebugEl) {
         titleDebugEl.innerText = " ⏳ 조회 중...";
@@ -126,6 +14,7 @@ async function checkLiveReal(data) {
     }
 
     try {
+        // 2. 서버 요청
         const res = await fetch('/api/streamer_data_repeater', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -134,72 +23,84 @@ async function checkLiveReal(data) {
 
         const results = await res.json();
 
+        // [UI] 제목 옆 완료 표시
         if (titleDebugEl) {
             titleDebugEl.innerText = ` ✅ 업데이트 완료 (${new Date().toLocaleTimeString()})`;
             titleDebugEl.style.color = "green";
         }
 
+        // 3. 데이터 업데이트 (제공해주신 잘 작동하는 로직 적용)
         results.forEach(r => {
             const safeId = r.id.trim();
             const cards = document.querySelectorAll(`.card[data-id="${safeId}"]`);
 
             cards.forEach(c => {
-                // -----------------------------------------------------------
-                // [핵심 수정] 디버그 로그 태그가 없으면 강제로 생성!
-                // -----------------------------------------------------------
+                // -------------------------------------------------------------
+                // [1] 디버그 로그 (기존 기능 유지)
+                // -------------------------------------------------------------
                 let debugEl = c.querySelector('.debug-log');
                 if (!debugEl) {
                     debugEl = document.createElement('div');
                     debugEl.className = 'debug-log';
-                    // 카드 안쪽 제일 끝에 붙임
                     c.appendChild(debugEl);
                 }
-
-                // 내용 채우기 (예: "L:M3 | F:M1")
                 if (r._debug) {
                     debugEl.innerText = r._debug;
-                    
-                    // "Fail" 글자가 들어가면 빨간색, 아니면 형광 초록
                     if (r._debug.toUpperCase().includes('FAIL')) {
-                        debugEl.style.color = '#ff4444'; // 빨강
+                        debugEl.style.color = '#ff4444';
                     } else {
-                        debugEl.style.color = '#00ff00'; // 형광 초록
+                        debugEl.style.color = '#00ff00';
                     }
                 }
-                // -----------------------------------------------------------
 
-                // [기존 로직 유지]
-                const badge = c.querySelector('.status-badge');
+                // -------------------------------------------------------------
+                // [2] 애청자 & 구독자 (제공해주신 코드 로직 이식)
+                // -------------------------------------------------------------
                 const fanEl = c.querySelector('.fan-cnt');
                 const subEl = c.querySelector('.sub-cnt');
-                const subRow = c.querySelector('.sub-row');
+                const subRow = c.querySelector('.sub-row'); // 구독자 줄 전체
+
+                // 값 안전하게 가져오기
+                const fanCount = (r.fans !== undefined && r.fans !== null) ? r.fans : 0;
+                const subCount = (r.subscribers !== undefined && r.subscribers !== null) ? r.subscribers : 0;
+
+                // 애청자 업데이트
+                if (fanEl) fanEl.innerText = Number(fanCount).toLocaleString();
+
+                // 구독자 로우 표시/숨김 처리 (중요!)
+                if (subRow) {
+                    if (subCount > 0) {
+                        subRow.style.display = 'flex';
+                        if (subEl) subEl.innerText = Number(subCount).toLocaleString();
+                    } else {
+                        subRow.style.display = 'none'; // 구독자 없으면 줄 자체를 숨김
+                    }
+                }
+
+                // -------------------------------------------------------------
+                // [3] 라이브 상태 / 배지 / 이미지 (제공해주신 코드 로직 이식)
+                // -------------------------------------------------------------
+                const badge = c.querySelector('.status-badge');
                 const profileImg = c.querySelector('.profile-img');
                 const thumbEl = c.querySelector('.card-thumb');
 
-                if (fanEl) fanEl.innerText = Number(r.fans || 0).toLocaleString();
-
-                if (subRow) {
-                    if ((r.subscribers || 0) > 0) {
-                        subRow.style.display = 'flex';
-                        if (subEl) subEl.innerText = Number(r.subscribers).toLocaleString();
-                    } else {
-                        subRow.style.display = 'none';
-                    }
-                }
-
+                // 프로필 이미지 업데이트
                 if (profileImg && r.profileUrl) {
                     if (profileImg.src !== r.profileUrl) profileImg.src = r.profileUrl;
                 }
 
                 if (r.isLive) {
+                    // 방송 ON
                     c.classList.add('is-live');
                     if (badge) {
                         badge.innerText = "LIVE";
                         badge.classList.remove('badge-off');
                         badge.classList.add('badge-live');
                     }
+                    // 썸네일 업데이트 (추가된 기능 유지)
                     if (thumbEl && r.thumbnail) thumbEl.src = r.thumbnail;
                 } else {
+                    // 방송 OFF
                     c.classList.remove('is-live');
                     if (badge) {
                         badge.innerText = "OFF";
@@ -218,6 +119,3 @@ async function checkLiveReal(data) {
         }
     }
 }
-
-
-init();
