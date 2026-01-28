@@ -1,3 +1,5 @@
+/* css/dashboard_design.css */
+
 /* [기본 설정] */
 body { margin: 0; background: #f0f2f5; font-family: 'Pretendard', sans-serif; overflow-x: hidden; height: 100vh; color: #333; }
 .container { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; }
@@ -9,18 +11,30 @@ h1 { margin: 0 0 5px 0; font-size: 1.8rem; font-weight: 900; color: #333; letter
 .refresh-btn { background: #333; color: #fff; border: 1px solid #444; padding: 6px 15px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; cursor: pointer; }
 .refresh-btn:hover { background: #555; }
 
-/* [메인 영역] */
+/* [메인 영역 - 정렬 문제 수정됨] */
 #main-area {
-    flex: 1; width: 100%; position: relative; overflow: auto; 
+    flex: 1; 
+    width: 100%; 
+    position: relative; 
+    overflow: auto; /* 스크롤 허용 */
     background: radial-gradient(circle at 50% 50%, #ffffff 0%, #e9ecef 100%);
-    display: flex; justify-content: center; 
-    padding: 60px;
+    
+    /* Flex 제거 -> Block 레이아웃 사용 (잘림 방지) */
+    display: block; 
+    text-align: center; /* 내부 요소 중앙 정렬 */
+    padding: 60px 0; /* 상하 패딩만 줌 */
 }
+
+/* [컨텐츠 래퍼 - 중앙 정렬 및 여백] */
 #content-wrapper {
     position: relative;
-    width: 1800px; 
+    /* JS에서 width가 설정되지만, 기본적으로 중앙 정렬 */
+    margin: 0 auto; 
+    display: inline-block; /* text-align: center의 영향을 받아 중앙에 위치 */
+    text-align: left; /* 내부 텍스트는 다시 왼쪽 정렬 */
     min-height: 800px;
 }
+
 svg { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none; overflow: visible; }
 #card-overlay { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 2; }
 
@@ -45,7 +59,7 @@ svg { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1
     gap: 12px;
     cursor: pointer; transition: transform 0.2s, top 0.5s, left 0.5s;
     z-index: 10; overflow: hidden;
-    will-change: transform; /* 성능 최적화 */
+    will-change: transform;
 }
 .card:hover { transform: scale(1.05); z-index: 999; box-shadow: 0 8px 25px rgba(0,0,0,0.15); border-color: #bbb; }
 
@@ -62,8 +76,8 @@ svg { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1
 
 /* ON/OFF 배지 */
 .status-badge { margin-top: 8px; font-size: 0.7rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; color: #fff; box-shadow: none; white-space: nowrap; }
-.badge-live { background: #ff4757; }
-.badge-off { background: #adb5bd; }
+.badge-live { background: #ff4757 !important; } /* 우선순위 높임 */
+.badge-off { background: #adb5bd !important; }
 
 .user-info-box { width: 100%; text-align: center; margin-top: 4px; }
 .nick { font-size: 1.0rem; font-weight: 800; color: #333; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
