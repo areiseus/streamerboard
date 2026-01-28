@@ -23,7 +23,7 @@ export default async function handler(req, res) {
             // ============================================================
             // [CASE 1] SOOP (AfreecaTV)
             // ============================================================
-            if (item.platform === 'soop' || item.platform === 'afreeca') {
+            if (item.platform === 'soop') {
                 try {
                     // 라이브 상세 정보
                     const liveDetail = await client.live.detail(item.id);
