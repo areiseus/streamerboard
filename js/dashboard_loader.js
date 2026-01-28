@@ -111,61 +111,117 @@ function saveLayoutCache(sig, positionsArr, chain) {
     localStorage.setItem('layout_v3_light', JSON.stringify(data));
 }
 
+
 async function checkLiveReal(data) {
-    const uniqueIds = [...new Set(data.map(m=>m.id))];
+    // 1. 중복 ID 제거 및 타겟 목록 생성
+    const uniqueIds = [...new Set(data.map(m => m.id))];
     const targets = uniqueIds.map(id => {
-        const org = data.find(m=>m.id===id);
-        return {id: org.id, platform: org.platform};
+        const org = data.find(m => m.id === id);
+        return { id: org.id, platform: org.platform };
     });
-    
+
+    // [UI] 시작 시: 제목 옆에 '로딩 중' 표시
     const titleDebugEl = document.getElementById('title-debug-info');
     if (titleDebugEl) {
-    // 예: "데이터 업데이트 완료 (2024-05-20 15:30:00)"
-    titleDebugEl.innerText = `데이터 업데이트 완료 (${new Date().toLocaleString()})`;
-    
-    // 또는 전체적인 상태 표시
-    // titleDebugEl.innerText = "모든 API 정상 작동 중";
-    // titleDebugEl.style.color = "green";
-}
+        titleDebugEl.innerText = " ⏳ 업데이트 중...";
+        titleDebugEl.style.color = "#888"; // 회색
+    }
 
-
-    
     try {
-        const res = await fetch('/api/streamer_data_repeater', { 
-            method: 'POST', headers: {'Content-Type': 'application/json'}, 
-            body: JSON.stringify({items: targets})
+        // 2. 서버에 데이터 요청
+        const res = await fetch('/api/streamer_data_repeater', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: targets })
         });
+
+        // 3. 응답 대기 (여기서 시간이 걸림)
         const results = await res.json();
+
+        // [UI] 성공 시: '완료' 및 시간 표시
+        if (titleDebugEl) {
+            titleDebugEl.innerText = ` ✅ 업데이트 완료 (${new Date().toLocaleTimeString()})`;
+            titleDebugEl.style.color = "green"; // 초록색
+        }
+
+        // 4. 받아온 데이터로 카드 업데이트
         results.forEach(r => {
             const safeId = r.id.trim();
+            // 해당 ID를 가진 모든 카드 선택 (멀티 그룹일 수 있으므로 All)
             const cards = document.querySelectorAll(`.card[data-id="${safeId}"]`);
+
             cards.forEach(c => {
                 const badge = c.querySelector('.status-badge');
                 const fanEl = c.querySelector('.fan-cnt');
                 const subEl = c.querySelector('.sub-cnt');
                 const subRow = c.querySelector('.sub-row');
-                
-                if(fanEl) fanEl.innerText = Number(r.fans||0).toLocaleString();
-                if(subRow) {
-                    if((r.subscribers||0) > 0) {
-                        subRow.style.display = 'flex';
-                        if(subEl) subEl.innerText = Number(r.subscribers).toLocaleString();
-                    } else { subRow.style.display = 'none'; }
+                const profileImg = c.querySelector('.profile-img');
+                const thumbEl = c.querySelector('.card-thumb'); // 썸네일 이미지 태그 (클래스명 확인 필요)
+
+                // [디버그 로그] 성공/실패 여부 카드 구석에 표시
+                const debugEl = c.querySelector('.debug-log');
+                if (debugEl && r._debug) {
+                    debugEl.innerText = r._debug;
+                    // Fail 텍스트가 있으면 빨간색, 아니면 형광 초록
+                    if (r._debug.toUpperCase().includes('FAIL')) {
+                        debugEl.style.color = 'red';
+                    } else {
+                        debugEl.style.color = '#00ff00';
+                    }
                 }
-                if(r.isLive) {
+
+                // [팬 수 업데이트]
+                if (fanEl) fanEl.innerText = Number(r.fans || 0).toLocaleString();
+
+                // [구독자 업데이트]
+                if (subRow) {
+                    if ((r.subscribers || 0) > 0) {
+                        subRow.style.display = 'flex';
+                        if (subEl) subEl.innerText = Number(r.subscribers).toLocaleString();
+                    } else {
+                        subRow.style.display = 'none';
+                    }
+                }
+
+                // [프로필 이미지 업데이트]
+                if (profileImg && r.profileUrl) {
+                    if (profileImg.src !== r.profileUrl) profileImg.src = r.profileUrl;
+                }
+
+                // [라이브 상태 업데이트]
+                if (r.isLive) {
+                    // 방송 중 (ON)
                     c.classList.add('is-live');
-                    if(badge) { badge.innerText = "LIVE"; badge.classList.remove('badge-off'); badge.classList.add('badge-live'); }
+                    if (badge) {
+                        badge.innerText = "LIVE";
+                        badge.classList.remove('badge-off');
+                        badge.classList.add('badge-live');
+                    }
+                    // 썸네일/타이틀 업데이트
+                    if (thumbEl && r.thumbnail) thumbEl.src = r.thumbnail;
+                    
                 } else {
+                    // 방송 종료 (OFF)
                     c.classList.remove('is-live');
-                    if(badge) { badge.innerText = "OFF"; badge.classList.remove('badge-live'); badge.classList.add('badge-off'); }
+                    if (badge) {
+                        badge.innerText = "OFF";
+                        badge.classList.remove('badge-live');
+                        badge.classList.add('badge-off');
+                    }
                 }
             });
         });
-    } catch(e) {}
 
-
-    
+    } catch (e) {
+        console.error(e);
+        // [UI] 실패 시: 에러 메시지 표시
+        if (titleDebugEl) {
+            titleDebugEl.innerText = " ❌ 업데이트 실패";
+            titleDebugEl.style.color = "red";
+        }
+    }
 }
+
 
 
 
