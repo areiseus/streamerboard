@@ -30,8 +30,8 @@ export default async function handler(req, res) {
                     const isLive = liveDetail && liveDetail.RESULT ? true : false;
 
                     // 라이브 정보 테스트용
-                    const livetag = await client.livedetail.channel(item.id);
-                    const liveon = (livetag.RESULT === 1) ? 1 : 0;
+                    //const livetag = await client.livedetail.channel(item.id);
+                    //const liveon = (livetag.RESULT === 1) ? 1 : 0;
                     //const liveon = 1;
                     
                     
