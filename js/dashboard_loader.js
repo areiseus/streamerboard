@@ -115,7 +115,8 @@ async function checkLiveReal(data) {
                     if (profileImg.src !== r.profileUrl) profileImg.src = r.profileUrl;
                 }
 
-                if (r.Liveon) {
+                //변수변경
+                if (r.liveon) {
                     // [방송 중]
                     c.classList.add('is-live');
                     if (badge) {
