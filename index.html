@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>유앤아이매방랑 Dashboard</title>
+    <title>유앤아이매방랑 Final Dashboard</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         /* [기본 설정] */
@@ -26,7 +26,7 @@
         }
         #content-wrapper {
             position: relative;
-            width: 1800px; /* 카드가 넓게 퍼지므로 wrapper도 넓게 */
+            width: 1800px; 
             min-height: 800px;
         }
         svg { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none; overflow: visible; }
@@ -46,7 +46,7 @@
            ========================================================================== */
         .card {
             position: absolute; 
-            width: 260px; height: 210px; /* 폭 260px로 축소 */
+            width: 260px; height: 210px; 
             background: #fff; border-radius: 20px; 
             border: 1px solid #ddd; 
             box-shadow: 0 4px 15px rgba(0,0,0,0.08);
@@ -208,7 +208,7 @@
     const COLS = 5; 
     const CARD_W = 260;    
     const CARD_H = 210;    
-    const GRID_W = 340;    // 260 + 80 = 340
+    const GRID_W = 340;    
     const GRID_H = 260;    
 
     // [색상 스케일 전역 사용]
@@ -447,7 +447,7 @@
                     <div class="group-list">${groupListHTML}</div>
                     
                     <div class="stats-container">
-                        <div class="stat-row">
+                        <div class="stat-row sub-row">
                             <span class="stat-label">구독자</span> <span class="sub-cnt">-</span>
                         </div>
                         <div class="stat-row">
@@ -606,12 +606,23 @@
                     const badge = c.querySelector('.status-badge');
                     const fanEl = c.querySelector('.fan-cnt');
                     const subEl = c.querySelector('.sub-cnt');
+                    // [수정] sub-row 선택 (숨김 처리를 위해)
+                    const subRow = c.querySelector('.sub-row');
                     
                     const fanCount = (r.fans !== undefined && r.fans !== null) ? r.fans : 0;
                     const subCount = (r.subscribers !== undefined && r.subscribers !== null) ? r.subscribers : 0;
                     
                     if(fanEl) fanEl.innerText = Number(fanCount).toLocaleString();
-                    if(subEl) subEl.innerText = Number(subCount).toLocaleString();
+                    
+                    // [수정] 구독자 수가 0이거나 에러면 숨김, 있으면 표시
+                    if(subRow) {
+                        if(subCount > 0) {
+                            subRow.style.display = 'flex'; // 보임 (flex나 block)
+                            if(subEl) subEl.innerText = Number(subCount).toLocaleString();
+                        } else {
+                            subRow.style.display = 'none'; // 숨김
+                        }
+                    }
 
                     // [Live Status Update]
                     if(r.isLive) {
