@@ -149,9 +149,8 @@ async function checkLiveReal(data) {
             });
         });
     } catch(e) {}
-}
 
-const titleDebugEl = document.getElementById('title-debug-info');
+    const titleDebugEl = document.getElementById('title-debug-info');
 if (titleDebugEl) {
     // 예: "데이터 업데이트 완료 (2024-05-20 15:30:00)"
     titleDebugEl.innerText = `데이터 업데이트 완료 (${new Date().toLocaleString()})`;
@@ -160,5 +159,9 @@ if (titleDebugEl) {
     // titleDebugEl.innerText = "모든 API 정상 작동 중";
     // titleDebugEl.style.color = "green";
 }
+    
+}
+
+
 
 init();
