@@ -130,7 +130,7 @@ export function adjustWrapperSize(posMap) {
 // 내부 헬퍼 함수
 function getCardHTML(d) {
     const pf = d.platform || 'soop';
-    const isSoop = (pf === 'soop' || pf === 'afreeca');
+    const isSoop = (pf === 'soop');
     const logoUrl = isSoop ? "https://res.sooplive.co.kr/images/svg/soop_logo.svg" : "https://ssl.pstatic.net/static/nng/glive/gif/logo_light.gif";
     const idDisplay = (!isSoop) ? 'display:none;' : '';
     const cardClass = isSoop ? '' : 'chzzk-theme';
@@ -146,6 +146,6 @@ function getCardHTML(d) {
             <div class="card-right"><div class="group-list">${groupListHTML}</div><div class="stats-container"><div class="stat-row sub-row" style="display:none"><span class="stat-label">구독자</span> <span class="sub-cnt">-</span></div><div class="stat-row"><span class="stat-label">애청자</span> <span class="fan-cnt">0</span></div></div></div></div>`;
 }
 function openLink(d) {
-    const isSoop = (d.platform==='soop'||d.platform==='afreeca');
-    window.open(isSoop ? `https://play.afreecatv.com/${d.id}` : `https://chzzk.naver.com/live/${d.id}`);
+    const isSoop = (d.platform==='soop');
+    window.open(isSoop ? `https://www.sooplive.co.kr/${d.id}` : `https://chzzk.naver.com/live/${d.id}`);
 }
