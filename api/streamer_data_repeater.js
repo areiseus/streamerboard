@@ -33,7 +33,7 @@ export default async function handler(req, res) {
                     // 라이브 상세 정보
                     const liveDetail = await client.live.detail(item.id);
                     // broad_no가 존재하면 방송 중으로 판단
-                    const isLive = liveDetail && liveDetail.broad_no ? true : false;
+                    isLive = liveDetail && liveDetail.broad_no ? true : false;
                 } catch (e) {
                     console.error(`SOOP Error (${item.id}):`, e.message);
                 }
