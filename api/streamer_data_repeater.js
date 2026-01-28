@@ -35,10 +35,11 @@ export default async function handler(req, res) {
                     let fans = 0;
                     let subscribers = 0;
 
-                    if (stationInfo && stationInfo.station && stationInfo.station.upd) {
+                    if (stationInfo) {
                         fans = stationInfo.station.upd.fan_cnt || 0;
-                        subscribers = stationInfo.station.StationInfo.subscription || 0; // 구독자 수
+                        subscribers = stationInfo.subscription || 0; // 구독자 수
                     }
+                    
 
                     results.push({
                         id: item.id,
