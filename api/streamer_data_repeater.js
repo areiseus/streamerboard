@@ -48,12 +48,13 @@ export default async function handler(req, res) {
                         id: item.id,
                         platform: 'soop',
                         isLive: isLive,
+                        Liveon: Liveon,
                         fans: parseInt(fans),
                         subscribers: parseInt(subscribers)
                     });
                 } catch (e) {
                     console.error(`SOOP Error (${item.id}):`, e.message);
-                    results.push({ id: item.id, platform: 'soop', isLive: false, fans: 0, subscribers: 0 });
+                    results.push({ id: item.id, platform: 'soop', isLive: false, fans: 0, subscribers: 0, Liveon : false });
                 }
             } 
             // ============================================================
