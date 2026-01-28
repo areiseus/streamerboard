@@ -26,7 +26,7 @@
         }
         #content-wrapper {
             position: relative;
-            width: 1600px; 
+            width: 1800px; /* 넉넉하게 잡음 */
             min-height: 800px;
         }
         svg { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none; overflow: visible; }
@@ -39,15 +39,15 @@
             box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 10;
         }
         .footer-header { font-weight: bold; color: #555; margin-bottom: 10px; border-bottom: 2px solid #eee; padding-bottom: 5px; text-align: center; }
-        .no-group-grid { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; }
+        .no-group-grid { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
 
         /* ==========================================================================
            [CARD 디자인]
            ========================================================================== */
         .card {
             position: absolute; 
-            /* 가로 길이 280px로 축소 */
-            width: 280px; height: 210px;
+            /* [수정] 카드 폭 축소 280 -> 260 */
+            width: 260px; height: 210px;
             background: #fff; border-radius: 20px; 
             border: 1px solid #ddd; 
             box-shadow: 0 4px 15px rgba(0,0,0,0.08);
@@ -135,13 +135,13 @@
             display: flex; align-items: center; justify-content: flex-start; 
             gap: 6px;
         }
+        /* 점 색상은 인라인 스타일로 제어되므로 기본값은 투명 등으로 둠 */
         .group-dot {
-            width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
-            background-color: #333; 
+            width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+            margin-right: 2px;
         }
 
         .card.chzzk-theme .group-item { background: #3a3e44; color: #ddd; }
-        .card.chzzk-theme .group-dot { background-color: #00ffa3; }
         
         .stats-container {
             margin-top: auto;
@@ -159,9 +159,9 @@
         .card.chzzk-theme .stat-row { color: #eee; }
         .card.chzzk-theme .stat-label { color: #bbb; }
 
+        /* 라이브 상태 효과 */
         .card.is-live { border-color: #ff4757; background: #fffbfb; }
         .card.chzzk-theme.is-live { background: #3b2e30; border-color: #ff4757; }
-        
         .card.is-live .profile-img { border-color: #ff4757; animation: pulse 2s infinite; }
         
         .no-group-grid .card { position: relative; left: auto !important; top: auto !important; }
@@ -207,12 +207,15 @@
 </div>
 
 <script>
-    /* [설정 변경] 카드 너비(280px)와 간격을 40px로 확보 */
+    /* [설정 변경] 카드 폭 축소(260px) + 간격 대폭 확대 */
     const COLS = 5; 
-    const CARD_W = 280;    // 카드 너비
+    const CARD_W = 260;    // [수정] 카드 너비 축소
     const CARD_H = 210;    
-    const GRID_W = 320;    // 간격 (280 + 40px Gap)
+    const GRID_W = 340;    // [수정] 카드 간격 확대 (260 + 80px Gap)
     const GRID_H = 260;    
+
+    // [색상 스케일 전역 사용] 그룹 선 색상과 점 색상을 맞추기 위함
+    const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
 
     async function init() {
         try {
@@ -237,12 +240,14 @@
             if (groupedNodes.length > 0) {
                 runLogic(groupedNodes);
             }
+            // 리피터 실행 (라이브, 구독자 등 갱신)
             checkLiveReal(data);
 
         } catch (e) { console.error(e); }
     }
 
     function runLogic(members) {
+        // [기존 그룹핑 및 배치 로직 유지]
         const groupMap = {};
         members.forEach(m => {
             m._groups.forEach(gName => {
@@ -382,6 +387,7 @@
         renderBalloons(chain, memberPositions);
     }
 
+    // [정렬 헬퍼 함수들]
     function sortMembers(a, b, posMap) {
         const colA = getTargetColumn(a, posMap);
         const colB = getTargetColumn(b, posMap);
@@ -403,6 +409,7 @@
         return maxOverlap > 0 ? best : null;
     }
 
+    // [UI 생성: 점 색상 동기화 적용]
     function getCardHTML(d) {
         const pf = d.platform || 'soop';
         const isSoop = (pf === 'soop' || pf === 'afreeca');
@@ -412,14 +419,17 @@
             : "https://ssl.pstatic.net/static/nng/glive/gif/logo_light.gif";
         
         const idDisplay = (!isSoop) ? 'display:none;' : '';
-
-        // [테마 적용]
         const cardClass = isSoop ? '' : 'chzzk-theme';
 
         let groupListHTML = '';
         if(d._groups && d._groups.length > 0) {
             d._groups.forEach(g => {
-                groupListHTML += `<div class="group-item"><span class="group-dot"></span><span class="g-name">${g}</span></div>`;
+                // [수정] 그룹명에 해당하는 색상을 D3 scale에서 가져와 적용
+                const dotColor = colorScale(g);
+                groupListHTML += `<div class="group-item">
+                                    <span class="group-dot" style="background-color: ${dotColor};"></span>
+                                    <span class="g-name">${g}</span>
+                                  </div>`;
             });
         }
 
@@ -478,12 +488,13 @@
         });
     }
 
+    // [선 그리기]
     function renderBalloons(chain, posMap) {
         const svg = d3.select("#svg-layer");
         svg.selectAll("*").remove(); 
-        const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
-        const drawOrder = [...chain].sort((a, b) => b.size - a.size);
+        // 전역 colorScale 사용 (점 색상과 일치)
         
+        const drawOrder = [...chain].sort((a, b) => b.size - a.size);
         const labelPositions = []; 
 
         drawOrder.forEach(g => {
@@ -493,7 +504,7 @@
             g.members.forEach(m => {
                 if(posMap.has(m.id)) {
                     const pos = posMap.get(m.id);
-                    const padding = 8; 
+                    const padding = 10; 
                     const x = pos.finalX; 
                     const y = pos.finalY;
                     const w = CARD_W; 
@@ -579,6 +590,7 @@
         return Array.from(set);
     }
 
+    // [데이터 연동 및 업데이트]
     async function checkLiveReal(data) {
         const uniqueIds = [...new Set(data.map(m=>m.id))];
         const targets = uniqueIds.map(id => {
@@ -587,7 +599,7 @@
         });
         
         try {
-            // [수정 완료] streamer_data_repeater.js 로 요청
+            // [API 주소] api/streamer_data_repeater.js
             const res = await fetch('/api/streamer_data_repeater', { 
                      method: 'POST', 
                     headers: {'Content-Type': 'application/json'}, 
@@ -609,6 +621,7 @@
                     if(fanEl) fanEl.innerText = Number(fanCount).toLocaleString();
                     if(subEl) subEl.innerText = Number(subCount).toLocaleString();
 
+                    // [Live Status Update]
                     if(r.isLive) {
                         c.classList.add('is-live');
                         if(badge) {
