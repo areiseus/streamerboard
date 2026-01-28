@@ -6,6 +6,7 @@ const CARD_H = 210;
 const GRID_W = 340;    // 수정: 간격 확보 (260 + 80)
 const GRID_H = 260;    
 
+
 // 전역 색상 스케일 (그룹 점 색상 동기화용)
 const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
 
