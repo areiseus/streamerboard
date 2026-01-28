@@ -54,7 +54,7 @@ export default async function handler(req, res) {
                     });
                 } catch (e) {
                     console.error(`SOOP Error (${item.id}):`, e.message);
-                    results.push({ id: item.id, platform: 'soop', isLive: false, fans: 0, subscribers: 0, Liveon : false });
+                    results.push({ id: item.id, platform: 'soop', isLive: false, fans: 0, subscribers: 0, Liveon: false });
                 }
             } 
             // ============================================================
