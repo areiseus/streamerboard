@@ -4,14 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>유앤아이매방랑 Final Dashboard</title>
-    <style>
-    #title-debug-info {
-            font-size: 14px;     /* 글자 크기 작게 */
-            color: #aaa;         /* 회색으로 덜 튀게 */
-            font-weight: normal; /* 굵기 보통으로 */
-            margin-left: 15px;   /* 제목과 간격 띄우기 */
-        }
-    </style>
     <link rel="stylesheet" href="css/dashboard_design.css">
     <script src="https://d3js.org/d3.v7.min.js"></script>
     
@@ -21,7 +13,18 @@
 <div class="container">
     <header>
         <h1>유앤아이매방랑 스트리머 현황판</h1>
+    <style>
+    #title-debug-info {
+            font-size: 14px;     /* 글자 크기 작게 */
+            color: #aaa;         /* 회색으로 덜 튀게 */
+            font-weight: normal; /* 굵기 보통으로 */
+            margin-left: 15px;   /* 제목과 간격 띄우기 */
+        }
+    </style>
+                
         <button class="refresh-btn" onclick="location.reload()">🔄 배치 새로고침</button>
+
+        
     </header>
     <a href="admin.html" class="admin-link">⚙️</a>
     <div id="main-area">
