@@ -24,24 +24,41 @@ export default async function handler(req, res) {
             // [CASE 1] SOOP
             // ============================================================
             if (item.platform === 'soop') {
-                try {
+
+                let isLive = false;
+                let fans = 0;
+                let subscribers = 0;
+
+                try{
                     // 라이브 상세 정보
                     const liveDetail = await client.live.detail(item.id);
                     // broad_no가 존재하면 방송 중으로 판단
                     const isLive = liveDetail && liveDetail.broad_no ? true : false;
-                    
-                    
-                    // 방송국 정보 (애청자, 구독자)
-                    const stationInfo = await client.channel.station(item.id);
-                    let fans = 0;
-                    let subscribers = 0;
+                } catch (e) {
+                    console.error(`SOOP Error (${item.id}):`, e.message);
+                }
 
+                
+                try{
+                    // 방송국 정보 (구독자)
+                    const stationInfo = await client.channel.station(item.id);
                     if (stationInfo) {
                         fans = stationInfo.station.upd.fan_cnt || 0;
-                        subscribers = stationInfo.subscription.total || 0; // 구독자 수
-                    }
-                    
+                        }
+                } catch (e) {
+                    console.error(`SOOP Error (${item.id}):`, e.message);
+                }
 
+
+                try{
+                    // 방송국 정보 (구독자)
+                    const stationInfo = await client.channel.station(item.id);
+                    if (stationInfo) {
+                        subscribers = stationInfo.subscription.total || 0; // 구독자 수
+                        }
+                  } catch (e) {
+                    console.error(`SOOP Error (${item.id}):`, e.message);
+                }                   
                     results.push({
                         id: item.id,
                         platform: 'soop',
@@ -49,10 +66,7 @@ export default async function handler(req, res) {
                         fans: parseInt(fans),
                         subscribers: parseInt(subscribers)
                     });
-                } catch (e) {
-                    console.error(`SOOP Error (${item.id}):`, e.message);
-                    results.push({ id: item.id, platform: 'soop', isLive: false, fans: 0, subscribers: 0 });
-                }
+                } 
             } 
             // ============================================================
             // [CASE 2] CHZZK (치지직)
