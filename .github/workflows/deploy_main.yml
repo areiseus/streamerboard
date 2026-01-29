@@ -1,0 +1,13 @@
+name: Deploy Main Only
+
+on:
+  push:
+    branches:
+      - main  # 오직 main 브랜치일 때만 작동
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Vercel Deploy
+        run: curl -X POST "https://api.vercel.com/v1/integrations/deploy/prj_BxrkeSUp9QM5YsluPW6uVPwuo87u/QBm2urJLy9"
