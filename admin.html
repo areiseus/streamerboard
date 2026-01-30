@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>관리자 페이지 (통합)</title>
+    <title>관리 페이지</title>
     <style>
         /* [기본 설정] */
         body { background: #222; color: #fff; padding: 20px; font-family: 'Pretendard', sans-serif; max-width: 1200px; margin: 0 auto; padding-bottom: 100px; }
@@ -305,7 +305,7 @@
 
         if(!group_name) return alert('그룹을 선택해주세요.');
         if(!id) return alert('ID를 입력해주세요.');
-        if(draftList.find(d => d.id === id)) return alert('이미 목록에 있습니다.');
+        if(draftList.find(d => d.id === id)) return alert('이미 입력 목록에 있는 대상입니다.');
 
         try {
             const res = await fetch('/api/lookup', {
